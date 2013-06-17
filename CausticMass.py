@@ -22,6 +22,12 @@ MassCalc:
 
 import numpy as np
 import astropy
+import cosmolopy.distance as cd
+from matplotlib.pyplot import *
+import astStats
+import scipy.ndimage as ndi
+from scipy.optimize import curve_fit
+
 
 c = 300000.0
 
@@ -39,7 +45,7 @@ class PhaseData:
     that can be carried through in the opperations for later.
     """
     
-    def __init__(self,data,gal_mags=None,gal_memberflag=None,clus_ra=None,clus_dec=None,clus_z=None,r200=2.0,rlimit=4.0,vlimit=3500,q=10.0,H0=100.0,cut_sample=True):
+    def __init__(self,data,gal_mags=None,gal_memberflag=None,clus_ra=None,clus_dec=None,clus_z=None,r200=2.0,rlimit=4.0,vlimit=3500,q=10.0,H0=100.0,cut_sample=True,gapper=True):
         self.clus_ra = clus_ra
         self.clus_dec = clus_dec
         self.clus_z = clus_z
@@ -71,18 +77,24 @@ class PhaseData:
         self.v = c*(data_spec[:,2] - self.clus_z)/(1+self.clus_z)
         
         #package galaxy data, USE ASTROPY TABLE HERE!!!!!
-        self.data_table = np.vstack((self.r,self.v,data_spec.T,gal_memberflag)).T
+        if gal_memberflag is None:
+            self.data_table = np.vstack((self.r,self.v,data_spec.T)).T
+        else:
+            self.data_table = np.vstack((self.r,self.v,data_spec.T,gal_memberflag)).T
         
         #reduce sample within limits
         if cut_sample == True:
-            self.data_set = set_sample(self.data_table,rlimit=rlimit,vlimit=vlimit)
+            self.data_set = self.set_sample(self.data_table,rlimit=rlimit,vlimit=vlimit)
         else:
             self.data_set = self.data_table
 
-        gaussian_kernel(self.data_set[:,0],self.data_set[:,1],self.r200,normalization=H0,scale=q,xres=200,yres=220)
-        self.img_tot = self.img/np.max(np.abs(img))
+        #further select sample via shifting gapper
+        self.data_set = self.shiftgapper(self.data_set)
+
+        self.gaussian_kernel(self.data_set[:,0],self.data_set[:,1],self.r200,normalization=H0,scale=q,xres=200,yres=220)
+        self.img_tot = self.img/np.max(np.abs(self.img))
         self.img_grad_tot = self.img_grad/np.max(np.abs(self.img_grad))
-        self.img_inf_tot += self.img_inf/np.max(np.abs(self.img_inf))
+        self.img_inf_tot = self.img_inf/np.max(np.abs(self.img_inf))
 
         
     def zdistance(self,clus_z,H0=100.0):
@@ -95,16 +107,18 @@ class PhaseData:
         ang_d = cd.angular_diameter_distance(clus_z,**cosmo)
         lum_d = cd.luminosity_distance(clus_z,**cosmo)
         return ang_d,lum_d
-       
+ 
+
     def findangle(self,ra,dec,clus_RA,clus_DEC):
         """
         Calculates the angles between the galaxies and the estimated cluster center.
         The value is returned in radians.
         """
         zsep = np.sin(clus_DEC*np.pi/180.0)*np.sin(np.array(dec)*np.pi/180.0)
-        xysep = np.cos(clus_DEC*np.pi/180.0)*np.cos(np.array(dec)*math.pi/180.0)*np.cos(np.pi/180.0*(clus_RA-np.array(ra)))
+        xysep = np.cos(clus_DEC*np.pi/180.0)*np.cos(np.array(dec)*np.pi/180.0)*np.cos(np.pi/180.0*(clus_RA-np.array(ra)))
         angle = np.arccos(zsep+xysep)
         return angle
+
 
     def set_sample(self,data,rlimit=4.0,vlimit=3500):
         """
@@ -115,6 +129,78 @@ class PhaseData:
         data_set = data[np.where((data[:,0] < rlimit) & (np.abs(data[:,1]) < vlimit))]
         return data_set
 
+    def shiftgapper(self,data):
+        npbin = 25
+        gap_prev = 2000 #initialize gap size for initial comparison (must be larger to start).
+        nbins = np.int(np.ceil(data[:,0].size/(npbin*1.0)))
+        origsize = data[:,0].shape[0]
+        data = data[np.argsort(data[:,0])] #sort by r to ready for binning
+        #print 'NBINS FOR GAPPER = ', nbins
+        for i in range(nbins):
+            #print 'BEGINNING BIN:',str(i)
+            databin = data[npbin*i:npbin*(i+1)]
+            #print 'R BETWEEN', str(databin[:,0][0]),'and',str(databin[:,0][-1])
+            #print 'DATA SIZE IN',databin[:,0].size
+            datanew = None
+            nsize = databin[:,0].size
+            datasize = nsize-1
+            if nsize > 5:
+                while nsize - datasize > 0 and datasize >= 5:
+                    #print '    ITERATING'
+                    nsize = databin[:,0].size
+                    databinsort = databin[np.argsort(databin[:,1])] #sort by v
+                    f = (databinsort[:,1])[databinsort[:,1].size-np.int(np.ceil(databinsort[:,1].size/4.0))]-(databinsort[:,1])[np.int(np.ceil(databinsort[:,1].size/4.0))]
+                    gap = f/(1.349)
+                    #print '    GAP SIZE', str(gap)
+                    if gap < 500.0:
+                        gap = 500.0
+                    if gap >= 2.0*gap_prev: 
+                        gap = gap_prev
+                        #print '   Altered gap = %.3f'%(gap)
+                    databelow = databinsort[databinsort[:,1]<=0]
+                    gapbelow =databelow[:,1][1:]-databelow[:,1][:-1]
+                    dataabove = databinsort[databinsort[:,1]>0]
+                    gapabove = dataabove[:,1][1:]-dataabove[:,1][:-1]
+                    try:
+                        if np.max(gapbelow) >= gap: vgapbelow = np.where(gapbelow >= gap)[0][-1]
+                        else: vgapbelow = -1
+                        #print 'MAX BELOW GAP',np.max(gapbelow)
+                        #print databelow[:,1]
+                        try: 
+                            datanew = np.append(datanew,databelow[vgapbelow+1:],axis=0)
+                        except:
+                            datanew = databelow[vgapbelow+1:]
+                    except ValueError:
+                        pass
+                    try:
+                        if np.max(gapabove) >= gap: vgapabove = np.where(gapabove >= gap)[0][0]
+                        else: vgapabove = 99999999
+                        #print 'MAX ABOVE GAP',np.max(gapabove)
+                        #print dataabove[:,1]
+                        try: 
+                            datanew = np.append(datanew,dataabove[:vgapabove+1],axis=0)
+                        except:
+                            datanew = dataabove[:vgapabove+1]
+                        #print datanew[:,1]
+                    except ValueError:
+                        pass
+                    databin = datanew
+                    datasize = datanew[:,0].size
+                    datanew = None
+                #print 'DATA SIZE OUT', databin[:,0].size
+                if gap >=500.0:
+                    gap_prev = gap
+                else:
+                    gap_prev = 500.0
+                
+            try:
+                datafinal = np.append(datafinal,databin,axis=0)
+            except:
+                datafinal = databin
+        #print 'GALAXIES CUT =',str(origsize-datafinal[:,0].size)
+        return datafinal
+
+    
     def gaussian_kernel(self,xvalues,yvalues,r200,normalization=100,scale=10,xres=200,yres=220,adj=20):
         """
         Uses a 2D gaussian kernel to estimate the density of the phase space.
@@ -124,7 +210,7 @@ class PhaseData:
         "x/yres" can be any value, but are recommended to be above 150
         "adj" is a custom value and changes the size of uniform filters when used (not normally needed)
         """
-        self.x_scale = xvalues/6.0*res
+        self.x_scale = xvalues/6.0*xres
         self.y_scale = ((yvalues+5000)/(normalization*scale))/(10000.0/(normalization*scale))*yres
 
         img = np.zeros((xres+1,yres+1))
@@ -181,13 +267,15 @@ class CausticSurface:
         bin = None - if doing multiple halos, can assign an ID number
     """
     
-    def __init__(self,r,v,ri,vi,Zi,memberflags=None,r200=2.0,maxv=5000.0,halo_scale_radius=None,halo_scale_radius_e=0.01,halo_vdisp=None,bin=None,plotphase=True):
+    def __init__(self,data,ri,vi,Zi,memberflags=None,r200=2.0,maxv=5000.0,halo_scale_radius=None,halo_scale_radius_e=0.01,halo_vdisp=None,bin=None,plotphase=True,gb=None):
         #first guess at the level
         kappaguess = np.max(Zi)
         #create levels (kappas) to try out
         self.levels = np.linspace(0.00001,kappaguess,100)[::-1]
         #when fitting an NFW (later), this defines the r range to fit within
         fitting_radii = np.where((ri>=r200/3.0) & (ri<=r200))
+        if gb is None:
+            self.gb = (3-2.0*0.2)/(1-0.2)
         
         self.r200 = r200
 
@@ -199,7 +287,7 @@ class CausticSurface:
         
         #Calculate velocity dispersion with either members, fed value, or estimate using 3.5sigma clipping
         if memberflags is not None:
-            vvarcal = v[np.where(memberflags==True)]
+            vvarcal = data[:,1][np.where(memberflags==1)]
             self.gal_vdisp = astStats.biweightScale(vvarcal,9.0)
             self.vvar = self.gal_vdisp**2
         if halo_vdisp is not None:
@@ -207,7 +295,7 @@ class CausticSurface:
             self.vvar = self.gal_vdisp**2
         else:
             #Variable self.gal_vdisp
-            self.findvdisp(r,v,r200,maxv)
+            self.findvdisp(data[:,0],data[:,1],r200,maxv)
             self.vvar = self.gal_vdisp**2
         
         #initilize arrays
@@ -219,14 +307,14 @@ class CausticSurface:
             self.vesc[i],Ar_final_opt[i] = self.findvesc(self.levels[i],ri,vi,Zi,r200)
         
         #difference equation to search for minimum value
-        self.skr = (self.vesc-4.0*vvar)**2
+        self.skr = (self.vesc-4.0*self.vvar)**2
         
         try:
             self.level_elem = np.where(self.skr == np.min(self.skr[np.isfinite(self.skr)]))[0][0]
-            self.level_final = self.levels[level_elem]
+            self.level_final = self.levels[self.level_elem]
             self.Ar_finalD = np.zeros(ri.size)
             for k in range(self.Ar_finalD.size):
-                self.Ar_finalD[k] = self.findAofr(level_final,Zi[k],vi)
+                self.Ar_finalD[k] = self.findAofr(self.level_final,Zi[k],vi)
                 if k != 0:
                     self.Ar_finalD[k] = self.restrict_gradient2(np.abs(self.Ar_finalD[k-1]),np.abs(self.Ar_finalD[k]),ri[k-1],ri[k])
         
@@ -240,10 +328,29 @@ class CausticSurface:
         if plotphase == True:
             s =figure()
             ax = s.add_subplot(111)
-            ax.plot(r,v,'k.')
+            ax.plot(data[:,0],data[:,1],'k.')
+            for t in range(Ar_final_opt.shape[0]):
+                ax.plot(ri[:Ar_final_opt[t].size],Ar_final_opt[t],c='0.4',alpha=0.5)
+                ax.plot(ri[:Ar_final_opt[t].size],-Ar_final_opt[t],c='0.4',alpha=0.5)
             ax.plot(ri,self.Ar_finalD,c='blue')
-            ax.set_xlim(0,3500)
+            ax.plot(ri,-self.Ar_finalD,c='blue')
+            ax.set_ylim(-3500,3500)
+            s.savefig('plotphase.png')
+            close()
 
+        ##Output galaxy membership
+        self.memflag = np.zeros(data.shape[0])
+        for k in range(self.memflag.size):
+            diff = data[k,0]-ri
+            xrange_up = ri[np.where(ri > data[k,0])][0]
+            xrange_down = ri[np.where(ri <= data[k,0])][-1]
+            c_up = np.abs(self.Ar_finalD[np.where(ri > data[k,0])])[0]
+            c_down = np.abs(self.Ar_finalD[np.where(ri<= data[k,0])])[-1]
+            slope = (c_up-c_down)/(xrange_up-xrange_down)
+            intercept = c_up - slope*xrange_up
+            vcompare = slope*data[k,0]+intercept
+            if vcompare >= np.abs(data[k,1]):
+                self.memflag[k] = 1
    
     def findvdisp(self,r,v,r200,maxv):
         """
@@ -252,7 +359,7 @@ class CausticSurface:
         v_cut = v[np.where((r<r200) & (np.abs(v)<maxv))]
         self.gal_vdisp = astStats.biweightClipped(v_cut,9.0,sigmaCut=3.5)['biweightScale']
 
-    def findvesc(self,level,ri,vi,Zi,norm,r200,g_b):
+    def findvesc(self,level,ri,vi,Zi,r200):
         """
         Calculate vesc^2 by first calculating the integrals in Diaf 99 which are not labeled but in 
         between Eqn 18 and 19
@@ -343,9 +450,10 @@ class CausticSurface:
                 if i != 0:
                     slot = i-1
                     break
-                    else:
-                        slot = i
-                        break
+                else:
+                    slot = i
+                    break
+        return slot
 
     def NFWfit(self,ri,Ar,halo_srad):
         min_func = lambda x,d0: np.sqrt(2*4*np.pi*4.5e-48*d0*(halo_srad)**2*np.log(1+x/halo_srad)/(x/halo_srad))*3.08e19
@@ -390,7 +498,7 @@ class MassCalc:
         r2 = ri[ri>=0]
         A2 = A[ri>=0]
         kmMpc = 3.08568025e19
-        #sum = np.zeros(A2.size)
+        sumtot = np.zeros(A2.size)
         self.g_b = (3-2.0*beta)/(1-beta)
         if conc1 == None:
             self.conc = 4.0*(vdisp/700.0)**(-0.306)
@@ -399,29 +507,28 @@ class MassCalc:
         if fbr is None:
             self.f_beta = 0.5*((r2/r200*self.conc)**2)/((1+((r2/r200*self.conc)))**2*np.log(1+((r2/r200*self.conc))))*self.g_b
             self.f_beta[0] = 0
-            #for i in range(A2.size-1):
-            #    i += 1    
-            #    sum[i] = np.trapz(f_beta[1:i+1]*(A2[1:i+1]*1000)**2,(r2[1:i+1])*kmMpc*1000)
-            #    #sum[i] = np.trapz((A2[:i+1]*1000)**2,(r2[:i+1])*kmMpc*1000)
-            sum = integrate.cumtrapz(self.f_beta*(A2[:f_beta.size]*1000)**2,r2[:f_beta.size]*kmMpc*1000,initial=0.0)
+            for i in range(A2.size-1):
+                i += 1    
+                sumtot[i] = np.trapz(self.f_beta[1:i+1]*(A2[1:i+1]*1000)**2,(r2[1:i+1])*kmMpc*1000)
+                #sum[i] = np.trapz((A2[:i+1]*1000)**2,(r2[:i+1])*kmMpc*1000)
+            #sum = integrate.cumtrapz(self.f_beta*(A2[:f_beta.size]*1000)**2,r2[:f_beta.size]*kmMpc*1000,initial=0.0)
         else:
             self.f_beta = fbr
             self.f_beta[0] = 0
-            #for i in range(A2[ri<1.9].size-1):
-            #    i += 1    
-            #    sum[i] = np.trapz(f_beta[1:i+1]*(A2[1:i+1]*1000)**2,(r2[1:i+1])*kmMpc*1000)
-            #    #sum[i] = np.trapz((A2[:i+1]*1000)**2,(r2[:i+1])*kmMpc*1000)
-            sum = integrate.cumtrapz(self.f_beta*(A2[:f_beta.size]*1000)**2,r2[:f_beta.size]*kmMpc*1000,initial=0.0)
-        self.massprofile = sum/(G*solmass)
+            for i in range(A2[ri<1.9].size-1):
+                i += 1    
+                sumtot[i] = np.trapz(self.f_beta[1:i+1]*(A2[1:i+1]*1000)**2,(r2[1:i+1])*kmMpc*1000)
+                #sum[i] = np.trapz((A2[:i+1]*1000)**2,(r2[:i+1])*kmMpc*1000)
+            #sum = integrate.cumtrapz(self.f_beta*(A2[:f_beta.size]*1000)**2,r2[:f_beta.size]*kmMpc*1000,initial=0.0)
+        self.massprofile = sumtot/(G*solmass)
         
         #return the caustic r200
-        self.avg_density = self.massprofile/(4.0/3.0*np.pi*(ri[:f_beta.size])**3.0)
-        self.r200_est = (ri[:f_beta.size])[np.where(self.avg_density >= 200*self.crit)[0]+1][-1]
+        self.avg_density = self.massprofile/(4.0/3.0*np.pi*(ri[:self.f_beta.size])**3.0)
+        self.r200_est = (ri[:self.f_beta.size])[np.where(self.avg_density >= 200*self.crit)[0]+1][-1]
 
-        if r200 is None:
-            self.M200 = self.massprofile[np.where(ri[:f_beta.size] <= self.r200_est)[0][-1]]
-        else:
-            self.M200 = self.massprofile[np.where(ri[:f_beta.size] <= r200)[0][-1]]
+        
+        self.M200_est = self.massprofile[np.where(ri[:self.f_beta.size] <= self.r200_est)[0][-1]]
+        self.M200 = self.massprofile[np.where(ri[:self.f_beta.size] <= r200)[0][-1]]
             
 
         
