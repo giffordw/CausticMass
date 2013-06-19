@@ -298,7 +298,10 @@ class CausticSurface:
             self.vvar = self.gal_vdisp**2
         else:
             #Variable self.gal_vdisp
-            self.findvdisp(data[:,0],data[:,1],r200,maxv)
+            try:
+                self.findvdisp(data[:,0],data[:,1],r200,maxv)
+            except:
+                self.gal_vdisp = np.std(data[:,1][np.where((data[:,0]<r200) & (np.abs(data[:,1])<maxv))],ddof=1)
             self.vvar = self.gal_vdisp**2
         
         #initilize arrays
@@ -360,7 +363,10 @@ class CausticSurface:
         Use astLib.astStats biweight sigma clipping Scale estimator for the velocity dispersion
         """
         v_cut = v[np.where((r<r200) & (np.abs(v)<maxv))]
-        self.gal_vdisp = astStats.biweightClipped(v_cut,9.0,sigmaCut=3.5)['biweightScale']
+        try:
+            self.gal_vdisp = astStats.biweightScale(v_cut,9.0)
+        except:
+            self.gal_vdisp = np.std(v_cut,ddof=1)
 
     def findvesc(self,level,ri,vi,Zi,r200):
         """
@@ -527,7 +533,10 @@ class MassCalc:
         
         #return the caustic r200
         self.avg_density = self.massprofile/(4.0/3.0*np.pi*(ri[:self.f_beta.size])**3.0)
-        self.r200_est = (ri[:self.f_beta.size])[np.where(self.avg_density >= 200*self.crit)[0]+1][-1]
+        try:
+            self.r200_est = (ri[:self.f_beta.size])[np.where(self.avg_density >= 200*self.crit)[0]][-1]
+        except IndexError:
+            self.r200_est = 0.0
 
         
         self.M200_est = self.massprofile[np.where(ri[:self.f_beta.size] <= self.r200_est)[0][-1]]
