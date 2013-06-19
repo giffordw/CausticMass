@@ -1,8 +1,8 @@
 """
 CausticMass.py contains 3 classes/objects each with a list of attributes and functions
 
-PhaseData:
-    functions: angulardistance(), findangle(), set_sample(), gaussian_kernel()
+Caustic:
+    functions: zdistance(), findangle(), set_sample(), shiftgapper(), gaussian_kernel()
     attributes: self.clus_ra, self.clus_dec, self.clus_z, self.r200, self.r, self.v, self.data, self.data_set,
                 self.ang_d, self.angle, self.x_scale, self.y_scale, self.x_range, self.y_range, self.ksize_x, 
                 self.ksize_y, self.img, self.img_grad, self.img_inf
@@ -19,7 +19,8 @@ MassCalc:
                 self.M200
 
 """
-
+import matplotlib
+matplotlib.use('Agg')
 import numpy as np
 import cosmolopy.distance as cd
 from matplotlib.pyplot import *
@@ -30,7 +31,7 @@ from scipy.optimize import curve_fit
 
 c = 300000.0
 
-class PhaseData:
+class Caustic:
     """
     Required input: Galaxy RA,DEC,Z which must be first 3 columns in data input
     
@@ -95,6 +96,72 @@ class PhaseData:
         self.img_tot = self.img/np.max(np.abs(self.img))
         self.img_grad_tot = self.img_grad/np.max(np.abs(self.img_grad))
         self.img_inf_tot = self.img_inf/np.max(np.abs(self.img_inf))
+
+        #Identify caustic surface and members within the surface
+        Caustics = CausticSurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=r200)
+
+        self.caustic_profile = Caustics.Ar_finalD
+        self.gal_vdisp = Caustics.gal_vdisp
+        self.memflag = Caustics.memflag
+
+        #Estimate the mass based off the caustic profile, beta profile (if given), and concentration (if given)
+        Mass = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=r200)
+
+        self.r200_est = Mass.r200_est
+        self.M200_est = Mass.M200_est
+
+        print 'r200 estimate: ',Mass.r200_est
+        print 'M200 estimate: ',Mass.M200_est
+
+        #calculate velocity dispersion
+        try:
+            self.vdisp_gal = astStats.biweightScale(self.data_set[:,1][self.memflag==1],9.0)
+        except:
+            try:
+                self.vdisp_gal = np.std(self.data_set[:,1][self.memflag==1],ddof=1)
+            except:
+                self.vdisp_gal = 0.0
+
+        self.err = 0
+        for k in range(4):
+            try:
+                #Identify caustic surface and members within the surface
+                Caustics = CausticSurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.memflag,r200=self.r200_est)
+                self.caustic_profile = Caustics.Ar_finalD
+                self.gal_vdisp = Caustics.gal_vdisp
+                self.memflag = Caustics.memflag
+                #Estimate the mass based off the caustic profile, beta profile (if given), and concentration (if given)
+                Mass = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200_est)
+                self.r200_est = Mass.r200_est
+                self.M200_est = Mass.M200_est
+                print 'r200 estimate: ',Mass.r200_est
+                print 'M200 estimate: ',Mass.M200_est
+            except:
+                #Identify caustic surface and members within the surface
+                Caustics = CausticSurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=r200)
+                self.caustic_profile = Caustics.Ar_finalD
+                self.gal_vdisp = Caustics.gal_vdisp
+                self.memflag = Caustics.memflag
+                #Estimate the mass based off the caustic profile, beta profile (if given), and concentration (if given)
+                Mass = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=r200)
+                self.r200_est = Mass.r200_est
+                self.M200_est = Mass.M200_est
+                print 'r200 estimate: ',Mass.r200_est
+                print 'M200 estimate: ',Mass.M200_est
+                self.err = 1
+                break
+
+            #calculate velocity dispersion
+        try:
+            self.vdisp_gal = astStats.biweightScale(self.data_set[:,1][self.memflag==1],9.0)
+        except:
+            try:
+                self.vdisp_gal = np.std(self.data_set[:,1][self.memflag==1],ddof=1)
+            except:
+                self.vdisp_gal = 0.0
+
+        self.Ngal = self.data_set[np.where((self.memflag==1)&(self.data_set[:,0]<=self.r200_est))].shape[0]
+
 
         
     def zdistance(self,clus_z,H0=100.0):
@@ -534,7 +601,7 @@ class MassCalc:
         #return the caustic r200
         self.avg_density = self.massprofile/(4.0/3.0*np.pi*(ri[:self.f_beta.size])**3.0)
         try:
-            self.r200_est = (ri[:self.f_beta.size])[np.where(self.avg_density >= 200*self.crit)[0]][-1]
+            self.r200_est = (ri[:self.f_beta.size])[np.where(self.avg_density >= 200*self.crit)[0]+1][-1]
         except IndexError:
             self.r200_est = 0.0
 
