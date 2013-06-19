@@ -21,7 +21,6 @@ MassCalc:
 """
 
 import numpy as np
-import astropy
 import cosmolopy.distance as cd
 from matplotlib.pyplot import *
 import astStats
@@ -45,7 +44,7 @@ class PhaseData:
     that can be carried through in the opperations for later.
     """
     
-    def __init__(self,data,gal_mags=None,gal_memberflag=None,clus_ra=None,clus_dec=None,clus_z=None,r200=2.0,rlimit=4.0,vlimit=3500,q=10.0,H0=100.0,cut_sample=True,gapper=True):
+    def __init__(self,data,gal_mags=None,gal_memberflag=None,clus_ra=None,clus_dec=None,clus_z=None,r200=2.0,rlimit=4.0,vlimit=3500,q=10.0,H0=100.0,cut_sample=True,gapper=True,mirror=True):
         self.clus_ra = clus_ra
         self.clus_dec = clus_dec
         self.clus_z = clus_z
@@ -91,7 +90,8 @@ class PhaseData:
         #further select sample via shifting gapper
         self.data_set = self.shiftgapper(self.data_set)
 
-        self.gaussian_kernel(self.data_set[:,0],self.data_set[:,1],self.r200,normalization=H0,scale=q,xres=200,yres=220)
+        if mirror == True:
+            self.gaussian_kernel(np.append(self.data_set[:,0],self.data_set[:,0]),np.append(self.data_set[:,1],-self.data_set[:,1]),self.r200,normalization=H0,scale=q,xres=200,yres=220)
         self.img_tot = self.img/np.max(np.abs(self.img))
         self.img_grad_tot = self.img_grad/np.max(np.abs(self.img_grad))
         self.img_inf_tot = self.img_inf/np.max(np.abs(self.img_inf))
@@ -288,7 +288,10 @@ class CausticSurface:
         #Calculate velocity dispersion with either members, fed value, or estimate using 3.5sigma clipping
         if memberflags is not None:
             vvarcal = data[:,1][np.where(memberflags==1)]
-            self.gal_vdisp = astStats.biweightScale(vvarcal,9.0)
+            try:
+                self.gal_vdisp = astStats.biweightScale(vvarcal,9.0)
+            except:
+                self.gal_vdisp = np.std(vvarcal,ddof=1)
             self.vvar = self.gal_vdisp**2
         if halo_vdisp is not None:
             self.gal_vdisp = use_vdisp
