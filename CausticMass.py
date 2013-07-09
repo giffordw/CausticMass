@@ -27,6 +27,7 @@ from matplotlib.pyplot import *
 import astStats
 import scipy.ndimage as ndi
 from scipy.optimize import curve_fit
+from scipy.interpolate import interp1d
 
 
 c = 300000.0
@@ -92,12 +93,17 @@ class Caustic:
         self.data_set = self.shiftgapper(self.data_set)
 
         if mirror == True:
+            print 'Calculating Density w/Mirrored Data'
             self.gaussian_kernel(np.append(self.data_set[:,0],self.data_set[:,0]),np.append(self.data_set[:,1],-self.data_set[:,1]),self.r200,normalization=H0,scale=q,xres=200,yres=220)
+        else:
+            print 'Calculating Density'
+            self.gaussian_kernel(self.data_set[:,0],self.data_set[:,1],self.r200,normalization=H0,scale=q,xres=200,yres=220)
         self.img_tot = self.img/np.max(np.abs(self.img))
         self.img_grad_tot = self.img_grad/np.max(np.abs(self.img_grad))
         self.img_inf_tot = self.img_inf/np.max(np.abs(self.img_inf))
 
-        #Identify caustic surface and members within the surface
+        #Identify initial caustic surface and members within the surface
+        print 'Calculating initial surface'
         Caustics = CausticSurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=r200)
 
         self.caustic_profile = Caustics.Ar_finalD
@@ -424,6 +430,20 @@ class CausticSurface:
             vcompare = slope*data[k,0]+intercept
             if vcompare >= np.abs(data[k,1]):
                 self.memflag[k] = 1
+
+    def causticmembership(self,data,ri,caustics):
+        self.memflag = np.zeros(data.shape[0])
+        for k in range(self.memflag.size):
+            diff = data[k,0]-ri
+            xrange_up = ri[np.where(ri > data[k,0])][0]
+            xrange_down = ri[np.where(ri <= data[k,0])][-1]
+            c_up = np.abs(saustics[np.where(ri > data[k,0])])[0]
+            c_down = np.abs(caustics[np.where(ri<= data[k,0])])[-1]
+            slope = (c_up-c_down)/(xrange_up-xrange_down)
+            intercept = c_up - slope*xrange_up
+            vcompare = slope*data[k,0]+intercept
+            if vcompare >= np.abs(data[k,1]):
+                self.memflag[k] = 1
    
     def findvdisp(self,r,v,r200,maxv):
         """
@@ -601,12 +621,16 @@ class MassCalc:
         #return the caustic r200
         self.avg_density = self.massprofile/(4.0/3.0*np.pi*(ri[:self.f_beta.size])**3.0)
         try:
-            self.r200_est = (ri[:self.f_beta.size])[np.where(self.avg_density >= 200*self.crit)[0]+1][-1]
+            #self.r200_est = (ri[:self.f_beta.size])[np.where(self.avg_density >= 200*self.crit)[0]+1][-1]
+            finterp = interp1d(self.avg_density[::-1],ri[:self.f_beta.size][::-1])
+            self.r200_est = finterp(200*self.crit)
         except IndexError:
             self.r200_est = 0.0
 
         
         self.M200_est = self.massprofile[np.where(ri[:self.f_beta.size] <= self.r200_est)[0][-1]]
+        finterp = interp1d(ri[:self.f_beta.size],self.massprofile)
+        self.M200_est = finterp(self.r200_est)
         self.M200 = self.massprofile[np.where(ri[:self.f_beta.size] <= r200)[0][-1]]
             
 
