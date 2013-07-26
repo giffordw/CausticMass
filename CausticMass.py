@@ -24,7 +24,7 @@ matplotlib.use('Agg')
 import numpy as np
 import cosmolopy.distance as cd
 from matplotlib.pyplot import *
-import astStats
+from astLib import astStats
 import scipy.ndimage as ndi
 from scipy.optimize import curve_fit
 from scipy.interpolate import interp1d
@@ -44,38 +44,45 @@ class Caustic:
     
     - User can submit a 2D data array if there are additional galaxy attribute columns not offered by default
     that can be carried through in the opperations for later.
+
+    data -- 2d array with columns starting with RA,DEC,Z
     """
     
-    def __init__(self,data,gal_mags=None,gal_memberflag=None,clus_ra=None,clus_dec=None,clus_z=None,r200=2.0,rlimit=4.0,vlimit=3500,q=10.0,H0=100.0,cut_sample=True,gapper=True,mirror=True):
+    def __init__(self,data,gal_mags=None,gal_memberflag=None,clus_ra=None,clus_dec=None,clus_z=None,gal_r=None,gal_v=None,r200=2.0,rlimit=4.0,vlimit=3500,q=10.0,H0=100.0,xmax=6.0,ymax=5000.0,cut_sample=True,gapper=True,mirror=True):
         self.clus_ra = clus_ra
         self.clus_dec = clus_dec
         self.clus_z = clus_z
         self.r200 = r200
-        if self.clus_ra == None:
-            #calculate average ra from galaxies
-            self.clus_ra = np.average(data[:,0])
-        if self.clus_dec == None:
-            #calculate average dec from galaxies
-            self.clus_dec = np.average(data[:,1])
-        
-        #Reduce data set to only valid redshifts
-        data_spec = data[np.where((np.isfinite(data[:,2])) & (data[:,2] > 0.0) & (data[:,2] < 5.0))]
+        if gal_r == None:
+            if self.clus_ra == None:
+                #calculate average ra from galaxies
+                self.clus_ra = np.average(data[:,0])
+            if self.clus_dec == None:
+                #calculate average dec from galaxies
+                self.clus_dec = np.average(data[:,1])
+            
+            #Reduce data set to only valid redshifts
+            data_spec = data[np.where((np.isfinite(data[:,2])) & (data[:,2] > 0.0) & (data[:,2] < 5.0))]
 
-        if self.clus_z == None:
-            #calculate average z from galaxies
-            self.clus_z = np.average(data_spec[:,2])
-        
-        #calculate angular diameter distance. 
-        #Variable self.ang_d
-        self.ang_d,self.lum_d = self.zdistance(self.clus_z,H0) 
-        
-        #calculate the spherical angles of galaxies from cluster center.
-        #Variable self.angle
-        self.angle = self.findangle(data_spec[:,0],data_spec[:,1],self.clus_ra,self.clus_dec)
+            if self.clus_z == None:
+                #calculate average z from galaxies
+                self.clus_z = np.average(data_spec[:,2])
+            
+            #calculate angular diameter distance. 
+            #Variable self.ang_d
+            self.ang_d,self.lum_d = self.zdistance(self.clus_z,H0) 
+            
+            #calculate the spherical angles of galaxies from cluster center.
+            #Variable self.angle
+            self.angle = self.findangle(data_spec[:,0],data_spec[:,1],self.clus_ra,self.clus_dec)
 
 
-        self.r = self.angle*self.ang_d
-        self.v = c*(data_spec[:,2] - self.clus_z)/(1+self.clus_z)
+            self.r = self.angle*self.ang_d
+            self.v = c*(data_spec[:,2] - self.clus_z)/(1+self.clus_z)
+        else:
+            data_spec = data[np.where(np.isfinite(gal_v))]
+            self.r = gal_r
+            self.v = gal_v
         
         #package galaxy data, USE ASTROPY TABLE HERE!!!!!
         if gal_memberflag is None:
@@ -90,36 +97,44 @@ class Caustic:
             self.data_set = self.data_table
 
         #further select sample via shifting gapper
-        self.data_set = self.shiftgapper(self.data_set)
+        if gapper == True:
+            self.data_set = self.shiftgapper(self.data_set)
 
         if mirror == True:
             print 'Calculating Density w/Mirrored Data'
-            self.gaussian_kernel(np.append(self.data_set[:,0],self.data_set[:,0]),np.append(self.data_set[:,1],-self.data_set[:,1]),self.r200,normalization=H0,scale=q,xres=200,yres=220)
+            self.gaussian_kernel(np.append(self.data_set[:,0],self.data_set[:,0]),np.append(self.data_set[:,1],-self.data_set[:,1]),self.r200,normalization=H0,scale=q,xmax=xmax,ymax=ymax,xres=200,yres=220)
         else:
             print 'Calculating Density'
-            self.gaussian_kernel(self.data_set[:,0],self.data_set[:,1],self.r200,normalization=H0,scale=q,xres=200,yres=220)
+            self.gaussian_kernel(self.data_set[:,0],self.data_set[:,1],self.r200,normalization=H0,scale=q,xmax=xmax,ymax=ymax,xres=200,yres=220)
         self.img_tot = self.img/np.max(np.abs(self.img))
         self.img_grad_tot = self.img_grad/np.max(np.abs(self.img_grad))
         self.img_inf_tot = self.img_inf/np.max(np.abs(self.img_inf))
 
         #Identify initial caustic surface and members within the surface
         print 'Calculating initial surface'
-        Caustics = CausticSurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=r200)
+        if gal_memberflag is None:
+            Caustics = CausticSurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=r200)
+        else:
+            Caustics = CausticSurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.data_set[:,-1],r200=r200)
 
         self.caustic_profile = Caustics.Ar_finalD
+        self.caustic_fit = Caustics.Arfit
         self.gal_vdisp = Caustics.gal_vdisp
         self.memflag = Caustics.memflag
 
         #Estimate the mass based off the caustic profile, beta profile (if given), and concentration (if given)
-        Mass = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=r200)
+        if clus_z is not None:
+            Mass = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=r200)
 
-        self.r200_est = Mass.r200_est
-        self.M200_est = Mass.M200_est
+            self.r200_est = Mass.r200_est
+            self.M200_est = Mass.M200_est
 
-        print 'r200 estimate: ',Mass.r200_est
-        print 'M200 estimate: ',Mass.M200_est
+            print 'r200 estimate: ',Mass.r200_est
+            print 'M200 estimate: ',Mass.M200_est
 
-        #calculate velocity dispersion
+            self.Ngal = self.data_set[np.where((self.memflag==1)&(self.data_set[:,0]<=self.r200_est))].shape[0]
+
+            #calculate velocity dispersion
         try:
             self.vdisp_gal = astStats.biweightScale(self.data_set[:,1][self.memflag==1],9.0)
         except:
@@ -127,7 +142,7 @@ class Caustic:
                 self.vdisp_gal = np.std(self.data_set[:,1][self.memflag==1],ddof=1)
             except:
                 self.vdisp_gal = 0.0
-
+        '''
         self.err = 0
         for k in range(4):
             try:
@@ -165,8 +180,8 @@ class Caustic:
                 self.vdisp_gal = np.std(self.data_set[:,1][self.memflag==1],ddof=1)
             except:
                 self.vdisp_gal = 0.0
+        '''
 
-        self.Ngal = self.data_set[np.where((self.memflag==1)&(self.data_set[:,0]<=self.r200_est))].shape[0]
 
 
         
@@ -212,8 +227,6 @@ class Caustic:
         for i in range(nbins):
             #print 'BEGINNING BIN:',str(i)
             databin = data[npbin*i:npbin*(i+1)]
-            #print 'R BETWEEN', str(databin[:,0][0]),'and',str(databin[:,0][-1])
-            #print 'DATA SIZE IN',databin[:,0].size
             datanew = None
             nsize = databin[:,0].size
             datasize = nsize-1
@@ -238,7 +251,6 @@ class Caustic:
                         if np.max(gapbelow) >= gap: vgapbelow = np.where(gapbelow >= gap)[0][-1]
                         else: vgapbelow = -1
                         #print 'MAX BELOW GAP',np.max(gapbelow)
-                        #print databelow[:,1]
                         try: 
                             datanew = np.append(datanew,databelow[vgapbelow+1:],axis=0)
                         except:
@@ -249,12 +261,10 @@ class Caustic:
                         if np.max(gapabove) >= gap: vgapabove = np.where(gapabove >= gap)[0][0]
                         else: vgapabove = 99999999
                         #print 'MAX ABOVE GAP',np.max(gapabove)
-                        #print dataabove[:,1]
                         try: 
                             datanew = np.append(datanew,dataabove[:vgapabove+1],axis=0)
                         except:
                             datanew = dataabove[:vgapabove+1]
-                        #print datanew[:,1]
                     except ValueError:
                         pass
                     databin = datanew
@@ -274,7 +284,7 @@ class Caustic:
         return datafinal
 
     
-    def gaussian_kernel(self,xvalues,yvalues,r200,normalization=100,scale=10,xres=200,yres=220,adj=20):
+    def gaussian_kernel(self,xvalues,yvalues,r200,normalization=100,scale=10,xres=200,yres=220,xmax=6.0,ymax=5000.0,adj=20):
         """
         Uses a 2D gaussian kernel to estimate the density of the phase space.
         As of now, the maximum radius extends to 6Mpc and the maximum velocity allowed is 5000km/s
@@ -283,12 +293,12 @@ class Caustic:
         "x/yres" can be any value, but are recommended to be above 150
         "adj" is a custom value and changes the size of uniform filters when used (not normally needed)
         """
-        self.x_scale = xvalues/6.0*xres
-        self.y_scale = ((yvalues+5000)/(normalization*scale))/(10000.0/(normalization*scale))*yres
+        self.x_scale = xvalues/xmax*xres
+        self.y_scale = ((yvalues+ymax)/(normalization*scale))/((ymax*2.0)/(normalization*scale))*yres
 
         img = np.zeros((xres+1,yres+1))
-        self.x_range = np.linspace(0,6,xres+1)
-        self.y_range = np.linspace(-5000,5000,yres+1) 
+        self.x_range = np.linspace(0,xmax,xres+1)
+        self.y_range = np.linspace(-ymax,ymax,yres+1) 
 
         for j in range(xvalues.size):
             img[self.x_scale[j],self.y_scale[j]] += 1
@@ -304,7 +314,7 @@ class Caustic:
         
         #smooth with estimated kernel sizes
         #img = ndi.uniform_filter(img, (self.ksize,self.ksize))#,mode='reflect')
-        self.img = ndi.gaussian_filter(img, (self.ksize_y,self.ksize_x))#,mode='reflect')
+        self.img = ndi.gaussian_filter(img, (self.ksize_y,self.ksize_x),mode='reflect')
         self.img_grad = ndi.gaussian_gradient_magnitude(img, (self.ksize_y,self.ksize_x))
         self.img_inf = ndi.gaussian_gradient_magnitude(ndi.gaussian_gradient_magnitude(img, (self.ksize_y,self.ksize_x)), (self.ksize_y,self.ksize_x))
 
@@ -349,7 +359,7 @@ class CausticSurface:
         fitting_radii = np.where((ri>=r200/3.0) & (ri<=r200))
         if gb is None:
             self.gb = (3-2.0*0.2)/(1-0.2)
-        
+
         self.r200 = r200
 
         if halo_scale_radius is None:
@@ -362,7 +372,7 @@ class CausticSurface:
         if memberflags is not None:
             vvarcal = data[:,1][np.where(memberflags==1)]
             try:
-                self.gal_vdisp = astStats.biweightScale(vvarcal,9.0)
+                self.gal_vdisp = astStats.biweightScale(vvarcal[np.where(np.isfinite(vvarcal))],9.0)
             except:
                 self.gal_vdisp = np.std(vvarcal,ddof=1)
             self.vvar = self.gal_vdisp**2
@@ -418,17 +428,22 @@ class CausticSurface:
             close()
 
         ##Output galaxy membership
+        kpc2km = 3.09e16
+        #fitfunc = lambda x,a,b,c,d: a*x**3 + b*x**2 + c*x + d
+        try:
+            fitfunc = lambda x,a,b: np.sqrt(2*4*np.pi*6.67e-20*a*(b*kpc2km)**2*np.log(1+x/b)/(x/b))
+            popt,pcov = curve_fit(fitfunc,ri[np.where((ri>10)&(ri<50))],self.Ar_finalD[np.where((ri>10)&(ri<50))])
+            self.Arfit = fitfunc(ri,popt[0],popt[1])
+        except:
+            fitfunc = lambda x,a: np.sqrt(2*4*np.pi*6.67e-20*a*(30.0*kpc2km)**2*np.log(1+x/30.0)/(x/30.0))
+            popt,pcov = curve_fit(fitfunc,ri[np.where((ri>10)&(ri<50))],self.Ar_finalD[np.where((ri>10)&(ri<50))])
+            self.Arfit = fitfunc(ri,popt[0])
+        #self.Arfit = popt[0]*ri**3+popt[1]*ri**2+popt[2]*ri+popt[3]
         self.memflag = np.zeros(data.shape[0])
+        fcomp = interp1d(ri,self.Ar_finalD)
         for k in range(self.memflag.size):
-            diff = data[k,0]-ri
-            xrange_up = ri[np.where(ri > data[k,0])][0]
-            xrange_down = ri[np.where(ri <= data[k,0])][-1]
-            c_up = np.abs(self.Ar_finalD[np.where(ri > data[k,0])])[0]
-            c_down = np.abs(self.Ar_finalD[np.where(ri<= data[k,0])])[-1]
-            slope = (c_up-c_down)/(xrange_up-xrange_down)
-            intercept = c_up - slope*xrange_up
-            vcompare = slope*data[k,0]+intercept
-            if vcompare >= np.abs(data[k,1]):
+            vcompare = fcomp(data[k,0])
+            if np.abs(vcompare) >= np.abs(data[k,1]):
                 self.memflag[k] = 1
 
     def causticmembership(self,data,ri,caustics):
@@ -437,7 +452,7 @@ class CausticSurface:
             diff = data[k,0]-ri
             xrange_up = ri[np.where(ri > data[k,0])][0]
             xrange_down = ri[np.where(ri <= data[k,0])][-1]
-            c_up = np.abs(saustics[np.where(ri > data[k,0])])[0]
+            c_up = np.abs(caustics[np.where(ri > data[k,0])])[0]
             c_down = np.abs(caustics[np.where(ri<= data[k,0])])[-1]
             slope = (c_up-c_down)/(xrange_up-xrange_down)
             intercept = c_up - slope*xrange_up
@@ -475,7 +490,6 @@ class CausticSurface:
 
     def findphir(self,shortZi,shortvi):
         short2Zi = np.ma.masked_array(shortZi)
-        #print 'test',shortvi[np.ma.where(np.ma.getmaskarray(short2Zi)==False)]
         vi = shortvi[np.ma.where(np.ma.getmaskarray(short2Zi)==False)]
         Zi = short2Zi[np.ma.where(np.ma.getmaskarray(short2Zi)==False)]
         
@@ -523,13 +537,11 @@ class CausticSurface:
         """
         if pastA <= newA:
             if (np.log(newA)-np.log(pastA))/(np.log(newr)-np.log(pastr)) > 3.0:
-                #print newA,pastA
                 dr = np.log(newr)-np.log(pastr)
                 return np.exp(np.log(pastA) + 2*dr)
             else: return newA
         if pastA > newA:
             if (np.log(newA)-np.log(pastA))/(np.log(newr)-np.log(pastr)) < -3.0 and pastA != 0:
-                #print newA,pastA
                 dr = np.log(newr)-np.log(pastr)
                 return np.exp(np.log(pastA) - 2*dr)
             else: return newA
