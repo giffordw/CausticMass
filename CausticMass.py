@@ -113,24 +113,24 @@ class Caustic:
         #Identify initial caustic surface and members within the surface
         print 'Calculating initial surface'
         if gal_memberflag is None:
-            Caustics = CausticSurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=r200)
+            self.Caustics = CausticSurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=r200)
         else:
-            Caustics = CausticSurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.data_set[:,-1],r200=r200)
+            self.Caustics = CausticSurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.data_set[:,-1],r200=r200)
 
-        self.caustic_profile = Caustics.Ar_finalD
-        self.caustic_fit = Caustics.Arfit
-        self.gal_vdisp = Caustics.gal_vdisp
-        self.memflag = Caustics.memflag
+        self.caustic_profile = self.Caustics.Ar_finalD
+        self.caustic_fit = self.Caustics.Arfit
+        self.gal_vdisp = self.Caustics.gal_vdisp
+        self.memflag = self.Caustics.memflag
 
         #Estimate the mass based off the caustic profile, beta profile (if given), and concentration (if given)
         if clus_z is not None:
-            Mass = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=r200)
+            self.Mass = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=r200)
 
-            self.r200_est = Mass.r200_est
-            self.M200_est = Mass.M200_est
+            self.r200_est = self.Mass.r200_est
+            self.M200_est = self.Mass.M200_est
 
-            print 'r200 estimate: ',Mass.r200_est
-            print 'M200 estimate: ',Mass.M200_est
+            print 'r200 estimate: ',self.Mass.r200_est
+            print 'M200 estimate: ',self.Mass.M200_est
 
             self.Ngal = self.data_set[np.where((self.memflag==1)&(self.data_set[:,0]<=self.r200_est))].shape[0]
 
