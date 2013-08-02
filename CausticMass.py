@@ -376,7 +376,7 @@ class CausticSurface:
             except:
                 self.gal_vdisp = np.std(vvarcal,ddof=1)
             self.vvar = self.gal_vdisp**2
-        if halo_vdisp is not None:
+        elif halo_vdisp is not None:
             self.gal_vdisp = use_vdisp
             self.vvar = self.gal_vdisp**2
         else:
