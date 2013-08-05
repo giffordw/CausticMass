@@ -104,7 +104,7 @@ class Caustic:
         upper_max = np.max(self.data_set[:,1][np.where(self.data_set[:,1]>0.0)])
         lower_max = np.min(self.data_set[:,1][np.where(self.data_set[:,1]<0.0)])
         if np.max(np.array([upper_max,-lower_max])) > 1000.0+np.min(np.array([upper_max,-lower_max])):
-            self.data_set = self.data_set[np.where(np.abs(self.data_set[:,1])<1000.0+np.min(np.array([upper_max,-lower_max]))
+            self.data_set = self.data_set[np.where(np.abs(self.data_set[:,1])<1000.0+np.min(np.array([upper_max,-lower_max]))]
 
         #if no r200 is identified, attempt to estimate based on velocity dispersion
         if r200 == None:
