@@ -100,6 +100,20 @@ class Caustic:
         if gapper == True:
             self.data_set = self.shiftgapper(self.data_set)
 
+        #tries to identify double groups that slip through the gapper process.
+        upper_max = np.max(self.data_set[:,1][np.where(self.data_set[:,1]>0.0)])
+        lower_max = np.min(self.data_set[:,1][np.where(self.data_set[:,1]<0.0)])
+        if np.max(np.array([upper_max,-lower_max])) > 1000.0+np.min(np.array([upper_max,-lower_max])):
+            self.data_set = self.data_set[np.where(np.abs(self.data_set[:,1])<1000.0+np.min(np.array([upper_max,-lower_max]))
+
+        #if no r200 is identified, attempt to estimate based on velocity dispersion
+        if r200 == None:
+            vdisp_prelim = astStats.biweightScale(self.data_set[:,1][np.where(self.data_set[:,0]<3.0)],9.0)
+            r200_mean_prelim = 0.002*vdisp_prelim + 0.40
+            self.r200 = r200_mean_prelim/1.7
+        else:
+            self.r200 = r200
+
         if mirror == True:
             print 'Calculating Density w/Mirrored Data'
             self.gaussian_kernel(np.append(self.data_set[:,0],self.data_set[:,0]),np.append(self.data_set[:,1],-self.data_set[:,1]),self.r200,normalization=H0,scale=q,xmax=xmax,ymax=ymax,xres=200,yres=220)
