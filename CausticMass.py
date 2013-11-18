@@ -393,12 +393,12 @@ class Caustic:
         self.x_scale = xvalues/xmax*xres
         self.y_scale = ((yvalues+ymax)/(normalization*scale))/((ymax*2.0)/(normalization*scale))*yres
 
-        img = np.zeros((xres+1,yres+1))
+        self.imgr = np.zeros((xres+1,yres+1))
         self.x_range = np.linspace(0,xmax,xres+1)
         self.y_range = np.linspace(-ymax,ymax,yres+1) 
 
         for j in range(xvalues.size):
-            img[self.x_scale[j],self.y_scale[j]] += 1
+            self.imgr[self.x_scale[j],self.y_scale[j]] += 1
         
         #Estimate kernel sizes
         #Uniform
@@ -410,10 +410,10 @@ class Caustic:
         self.ksize_y = (4.0/(3.0*yvalues.size))**(1/5.0)*np.std(self.y_scale[xvalues<r200])
         
         #smooth with estimated kernel sizes
-        #img = ndi.uniform_filter(img, (self.ksize,self.ksize))#,mode='reflect')
-        self.img = ndi.gaussian_filter(img, (self.ksize_y,self.ksize_x),mode='reflect')
-        self.img_grad = ndi.gaussian_gradient_magnitude(img, (self.ksize_y,self.ksize_x))
-        self.img_inf = ndi.gaussian_gradient_magnitude(ndi.gaussian_gradient_magnitude(img, (self.ksize_y,self.ksize_x)), (self.ksize_y,self.ksize_x))
+        #self.img = ndi.uniform_filter(self.imgr, (self.ksize,self.ksize))#,mode='reflect')
+        self.img = ndi.gaussian_filter(self.imgr, (self.ksize_y,self.ksize_x),mode='reflect')
+        self.img_grad = ndi.gaussian_gradient_magnitude(imgr, (self.ksize_y,self.ksize_x))
+        self.img_inf = ndi.gaussian_gradient_magnitude(ndi.gaussian_gradient_magnitude(imgr, (self.ksize_y,self.ksize_x)), (self.ksize_y,self.ksize_x))
 
 
 
