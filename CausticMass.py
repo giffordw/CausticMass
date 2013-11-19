@@ -102,6 +102,10 @@ class Caustic:
         else:
             self.data_set = self.data_table
 
+        if self.data_set.shape[0] < 2:
+            return 0
+        
+
         #further select sample via shifting gapper
         if gapper == True:
             self.data_set = self.shiftgapper(self.data_set)
@@ -220,7 +224,8 @@ class Caustic:
             self.Mass = MassCalc(self.x_range,self.caustic_fit,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=None,H0=H0)
             self.Mass2 = MassCalc(self.x_range,self.caustic_fit,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=0.65,H0=H0)
 
-
+            self.mprof = self.Mass.massprofile
+            self.mprof_fbeta = self.Mass2.massprofile
             self.r200_est = self.Mass.r200_est
             self.r200_est_fbeta = self.Mass2.r200_est
             self.M200_est = self.Mass.M200_est
@@ -239,6 +244,7 @@ class Caustic:
                 self.vdisp_gal = np.std(self.data_set[:,1][self.memflag==1],ddof=1)
             except:
                 self.vdisp_gal = 0.0
+        return 1
         '''
         self.err = 0
         for k in range(4):
@@ -744,7 +750,7 @@ class MassCalc:
             self.r200_est = finterp(200*self.crit)
         except IndexError:
             self.r200_est = 0.0
-        self.M200_est = self.massprofile[np.where(ri[:self.f_beta.size] <= self.r200_est)[0][-1]]
+        #self.M200_est = self.massprofile[np.where(ri[:self.f_beta.size] <= self.r200_est)[0][-1]]
         finterp = interp1d(ri[:self.f_beta.size],self.massprofile)
         self.M200_est = finterp(self.r200_est)
         self.M200 = self.massprofile[np.where(ri[:self.f_beta.size] <= r200)[0][-1]]
