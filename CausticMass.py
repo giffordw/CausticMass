@@ -222,10 +222,10 @@ class Caustic:
 
         #Estimate the mass based off the caustic profile, beta profile (if given), and concentration (if given)
         if clus_z is not None:
-            #self.Mass = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=None,H0=H0)
-            #self.Mass2 = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=0.65,H0=H0)
-            self.Mass = MassCalc(self.x_range,self.caustic_fit,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=None,H0=H0)
-            self.Mass2 = MassCalc(self.x_range,self.caustic_fit,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=0.65,H0=H0)
+            self.Mass = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=None,H0=H0)
+            self.Mass2 = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=0.65,H0=H0)
+            #self.Mass = MassCalc(self.x_range,self.caustic_fit,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=None,H0=H0)
+            #self.Mass2 = MassCalc(self.x_range,self.caustic_fit,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=0.65,H0=H0)
 
             self.mprof = self.Mass.massprofile
             self.mprof_fbeta = self.Mass2.massprofile
@@ -756,7 +756,8 @@ class MassCalc:
         #self.M200_est = self.massprofile[np.where(ri[:self.f_beta.size] <= self.r200_est)[0][-1]]
         finterp = interp1d(ri[:self.f_beta.size],self.massprofile)
         self.M200_est = finterp(self.r200_est)
-        self.M200 = self.massprofile[np.where(ri[:self.f_beta.size] <= r200)[0][-1]]
+        #self.M200 = self.massprofile[np.where(ri[:self.f_beta.size] <= r200)[0][-1]]
+        self.M200 = finterp(r200)
             
 
         
