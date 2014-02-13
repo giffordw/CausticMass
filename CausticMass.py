@@ -31,7 +31,9 @@ import scipy.ndimage as ndi
 from scipy.optimize import curve_fit
 from scipy.interpolate import interp1d
 import pdb
+import warnings
 
+warnings.filterwarnings('ignore')
 
 c = 300000.0
 
@@ -55,6 +57,7 @@ class Caustic:
         pass
     
     def run_caustic(self,data,gal_mags=None,gal_memberflag=None,clus_ra=None,clus_dec=None,clus_z=None,gal_r=None,gal_v=None,r200=None,clus_vdisp=None,rlimit=4.0,vlimit=3500,q=10.0,H0=100.0,xmax=6.0,ymax=5000.0,cut_sample=True,gapper=True,mirror=True,absflag=False):
+        S = CausticSurface()
         self.clus_ra = clus_ra
         self.clus_dec = clus_dec
         self.clus_z = clus_z
@@ -150,6 +153,8 @@ class Caustic:
 
         else:
             self.r200 = r200
+            if self.r200 > 3.0:
+                self.r200 = 3.0
         print 'Pre_r200=',self.r200
 
         if mirror == True:
@@ -211,9 +216,9 @@ class Caustic:
         #Identify initial caustic surface and members within the surface
         print 'Calculating initial surface'
         if gal_memberflag is None:
-            self.Caustics = CausticSurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None)
+            self.Caustics = CausticSurface.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None)
         else:
-            self.Caustics = CausticSurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.data_set[:,-1],r200=self.r200)
+            self.Caustics = CausticSurface.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.data_set[:,-1],r200=self.r200)
 
         self.caustic_profile = self.Caustics.Ar_finalD
         self.caustic_fit = self.Caustics.vesc_fit
@@ -222,10 +227,10 @@ class Caustic:
 
         #Estimate the mass based off the caustic profile, beta profile (if given), and concentration (if given)
         if clus_z is not None:
+            #self.Mass = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=None,H0=H0)
+            #self.Mass2 = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=0.65,H0=H0)
             self.Mass = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=None,H0=H0)
             self.Mass2 = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=0.65,H0=H0)
-            #self.Mass = MassCalc(self.x_range,self.caustic_fit,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=None,H0=H0)
-            #self.Mass2 = MassCalc(self.x_range,self.caustic_fit,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=0.65,H0=H0)
 
             self.mprof = self.Mass.massprofile
             self.mprof_fbeta = self.Mass2.massprofile
@@ -253,7 +258,7 @@ class Caustic:
         for k in range(4):
             try:
                 #Identify caustic surface and members within the surface
-                Caustics = CausticSurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.memflag,r200=self.r200_est)
+                Caustics = CausticSurface.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.memflag,r200=self.r200_est)
                 self.caustic_profile = Caustics.Ar_finalD
                 self.gal_vdisp = Caustics.gal_vdisp
                 self.memflag = Caustics.memflag
@@ -265,7 +270,7 @@ class Caustic:
                 print 'M200 estimate: ',Mass.M200_est
             except:
                 #Identify caustic surface and members within the surface
-                Caustics = CausticSurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=r200)
+                Caustics = CausticSurface.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=r200)
                 self.caustic_profile = Caustics.Ar_finalD
                 self.gal_vdisp = Caustics.gal_vdisp
                 self.memflag = Caustics.memflag
@@ -398,7 +403,38 @@ class Caustic:
         "normalization" is simply H0
         "x/yres" can be any value, but are recommended to be above 150
         "adj" is a custom value and changes the size of uniform filters when used (not normally needed)
+
+        Parameters
+        ----------
+        xvalues : x-coordinates of points in phase space
+
+        yvalues : y-coordinates of points in phase space
+
+        r200 : Required estimate of r200 to calculate a rough dispersion
+
+        normalization = 100 : This is equivalent to H0. Default is H0=100
+
+        scale = 10 : "q" parameter in Diaferio 99. Literature says this can be between 10-50
+
+        xres = 200 : x-grid resolution
+
+        yres = 220 : y-grid resolution
+
+        xmax = 6.0 : Maximum x-grid value. If data points exceed this amount either increase
+                     this value or cut sample to be within this value.
+
+        ymax = 5000 : Maximum/minimum y-grid value. If data points exceed this amount either increase
+                     this value or cut sample to be within this value.
+
+        Returns
+        -------
+        self.x_range : array of x-grid values
+        self.y_range : array of y-grid values
+        self.img : smoothed density image
+        self.img_grad : first derivative of img
+        self.img_inf : second derivative of img
         """
+        
         self.x_scale = xvalues/xmax*xres
         self.y_scale = ((yvalues+ymax)/(normalization*scale))/((ymax*2.0)/(normalization*scale))*yres
 
@@ -455,8 +491,10 @@ class CausticSurface:
 
         bin = None - if doing multiple halos, can assign an ID number
     """
+    def __init__(self):
+        pass
     
-    def __init__(self,data,ri,vi,Zi,memberflags=None,r200=2.0,maxv=5000.0,halo_scale_radius=None,halo_scale_radius_e=0.01,halo_vdisp=None,bin=None,plotphase=True,beta=None):
+    def findsurface(self,data,ri,vi,Zi,memberflags=None,r200=2.0,maxv=5000.0,halo_scale_radius=None,halo_scale_radius_e=0.01,halo_vdisp=None,bin=None,plotphase=True,beta=None):
         kappaguess = np.max(Zi) #first guess at the level
         self.levels = np.linspace(0.00001,kappaguess,100)[::-1] #create levels (kappas) to try out
         fitting_radii = np.where((ri>=r200/3.0) & (ri<=r200)) #when fitting an NFW (later), this defines the r range to fit within
@@ -547,12 +585,155 @@ class CausticSurface:
             self.Arfit = fitfunc(ri,popt[0])
         self.memflag = np.zeros(data.shape[0])
         #fcomp = interp1d(ri,self.Ar_finalD)
-        print ri.size, self.vesc_fit.size
+        #print ri.size, self.vesc_fit.size
         fcomp = interp1d(ri,self.vesc_fit)
         for k in range(self.memflag.size):
             vcompare = fcomp(data[k,0])
             if np.abs(vcompare) >= np.abs(data[k,1]):
                 self.memflag[k] = 1
+
+    def findsurface_inf(self,data,ri,vi,Zi,Zi_inf,memberflags=None,r200=2.0,maxv=5000.0,halo_scale_radius=None,halo_scale_radius_e=0.01,halo_vdisp=None,beta=None):
+        """
+        Identifies the caustic surface using the iso-density contours in phase space, 
+        as well as the second derivative of the density (aptly named the inflection technique).
+        This technique attempts to rid the caustic technique of the dreaded velocity dispersion
+        calibration that is used to pick a surface.
+        
+
+        Parameters
+        ----------
+        data : first and second columns must be radius and velocity
+
+        ri : x-grid values
+
+        vi : y-grid values
+
+        Zi : density image
+
+        Zi_inf : second derivative of the density image
+
+        memberflags = None : array of 1's if member 0's if not
+
+        r200 = 2.0 : r200 value
+
+        maxv = 5000.0 : maximum y-value
+
+        halo_scale_radius = None : The default is actually a concentration of 5.0 
+                                   which is applied later if None is given.
+
+        halo_scale_radius_e=0.01 : error in halo_scale_radius
+
+        halo_vdisp = None : supply cluster velocity dispersion
+
+        beta = None : The default is actually 0.2 which is applied later in the code
+                      although as of now beta is not used in this function
+
+        Variables
+        ---------
+        
+        """
+        kappaguess = np.max(Zi)   #first thing is to guess at the level
+        self.levels = np.linspace(0.00001,kappaguess,100)[::-1] #create levels (kappas) to try out
+        fitting_radii = np.where((ri>=r200/3.0) & (ri<=r200))
+        
+        self.r200 = r200
+
+        if halo_scale_radius is None:
+            self.halo_scale_radius = self.r200/5.0
+        else:
+            self.halo_scale_radius = halo_scale_radius
+            self.halo_scale_radius_e = halo_scale_radius_e
+        
+        #c_guess = np.array([halo_srad])#np.linspace(1.0,12.0,100)
+        #density_guess = np.linspace(1e13,5e16,1000)
+        
+        if beta is None:
+            self.beta = 0.2+np.zeros(ri.size)
+        else: self.beta = beta
+        self.gb = (3-2.0*self.beta)/(1-self.beta)
+        
+        #Calculate velocity dispersion with either members, fed value, or estimate using 3.5sigma clipping
+        if memberflags is not None:
+            vvarcal = data[:,1][np.where(memberflags==1)]
+            try:
+                self.gal_vdisp = astStats.biweightScale(vvarcal[np.where(np.isfinite(vvarcal))],9.0)
+                print 'O ya! membership calculation!'
+            except:
+                self.gal_vdisp = np.std(vvarcal,ddof=1)
+            self.vvar = self.gal_vdisp**2
+        elif halo_vdisp is not None:
+            self.gal_vdisp = halo_vdisp
+            self.vvar = self.gal_vdisp**2
+        else:
+            #Variable self.gal_vdisp
+            try:
+                self.findvdisp(data[:,0],data[:,1],r200,maxv)
+            except:
+                self.gal_vdisp = np.std(data[:,1][np.where((data[:,0]<r200) & (np.abs(data[:,1])<maxv))],ddof=1)
+            self.vvar = self.gal_vdisp**2
+        
+        self.Ar_final_opt = np.zeros((self.levels.size,ri[np.where((ri<r200) & (ri>=0))].size)) #2D array: density levels x velocity profile
+        self.inf_vals = np.zeros((self.levels.size,ri[np.where((ri<r200) & (ri>=0))].size)) #2D array: density levels x inflection profile
+        #s = figure()
+        #ax = s.add_subplot(111)
+        for i in range(self.levels.size): # find the escape velocity for all level (kappa) guesses
+            self.Ar_final_opt[i],self.inf_vals[i] = self.findvesc2(self.levels[i],ri,vi,Zi,Zi_inf,norm,r200)
+            #ax.plot(ri[np.where((ri<r200) & (ri>=0))],np.abs(self.Ar_final_opt[i]),c='black',alpha=0.4) #plot each density contour
+        self.inf_avg = np.average(self.inf_vals.T[fitting_radii],axis=0) #average inflection along each contour surface
+        self.Ar_avg = np.average((self.Ar_final_opt.T[ri<r200]).T,axis=1) #average velocity along each contour surface inside r200
+        
+        #Need to identify maximum average inflection, so smooth the measurement. Might want to do this a non-parametric way
+        tryfit = np.polyfit(self.levels,self.inf_avg,7)
+        self.infyvals = tryfit[0]*self.levels**7+tryfit[1]*self.levels**6+tryfit[2]*self.levels**5+tryfit[3]*self.levels**4+tryfit[4]*self.levels**3+tryfit[5]*self.levels**2+tryfit[6]*self.levels+tryfit[7]
+        '''
+        s2 = figure()
+        ax2 = s2.add_subplot(111)
+        ax2.plot(self.Ar_avg,self.infyvals)
+        ax2.plot(self.Ar_avg,self.inf_avg,'k.')
+        savefig('/nfs/christoq_ls/giffordw/hi.png')
+        close()
+        '''
+        self.inf_std = np.std(self.inf_vals.T[fitting_radii],axis=0) #std of inflection along each caustic surface
+        #self.level_elem = (self.levels[Ar_avg>np.sqrt(vvar)])[np.where(self.inf_avg[Ar_avg>np.sqrt(vvar)] == np.max(self.inf_avg[Ar_avg>np.sqrt(vvar)]))]
+        self.level_elem = self.levels[np.where(self.inf_avg == np.max(self.inf_avg))][0]
+        #low_zone = np.where((np.average(np.abs(self.Ar_final_opt),axis=1)>np.max(v)/2.0) & (np.average(np.abs(self.Ar_final_opt),axis=1)<np.max(v)))
+        high_zone = np.where((np.average(np.abs(self.Ar_final_opt),axis=1)>np.max(v)/2.0))
+        #level_elem_low = self.levels[low_zone][np.where(self.inf_avg[low_zone] == np.min(self.inf_avg[low_zone]))][-1]
+        #level_elem_high = self.levels[high_zone][np.where(self.inf_avg[high_zone] == np.max(self.inf_avg[high_zone]))][-1]
+        try:
+            self.level_elem_high = (self.levels[1:-1][np.where((self.infyvals[1:-1]>self.infyvals[2:])&(self.infyvals[1:-1]>self.infyvals[:-2]))])[-1]
+        except IndexError:
+            self.level_elem_high = self.levels[0]
+        self.Ar_final_high = np.zeros(ri.size)
+        #self.Ar_final_low = np.zeros(ri.size)
+        for i in range(ri.size):
+            self.Ar_final_high[i] = self.findAofr(self.level_elem_high,Zi[i],vi)
+            #self.Ar_final_low[i] = self.findAofr(level_elem_low,Zi[i],vi)
+            if i > 0:
+                self.Ar_final_high[i] = self.restrict_gradient2(np.abs(self.Ar_final_high[i-1]),np.abs(self.Ar_final_high[i]),ri[i-1],ri[i])
+                #self.Ar_final_low[i] = self.restrict_gradient2(np.abs(self.Ar_final_low[i-1]),np.abs(self.Ar_final_low[i]),ri[i-1],ri[i])
+        #Ar_final = self.Ar_final_opt[np.where(self.inf_avg == np.max(self.inf_avg))][0]
+        #self.Ar_final = (self.Ar_final_high+self.Ar_final_low)/2.0
+        self.Ar_final = self.Ar_final_high
+
+        ##Output galaxy membership
+        kpc2km = 3.09e16
+        try:
+            fitfunc = lambda x,a,b: np.sqrt(2*4*np.pi*6.67e-20*a*(b*kpc2km)**2*np.log(1+x/b)/(x/b))
+            popt,pcov = curve_fit(fitfunc,ri,self.Ar_final)
+            self.vesc_fit = fitfunc(ri,popt[0],popt[1])
+        except:
+            fitfunc = lambda x,a: np.sqrt(2*4*np.pi*6.67e-20*a*(30.0*kpc2km)**2*np.log(1+x/30.0)/(x/30.0))
+            popt,pcov = curve_fit(fitfunc,ri,self.Ar_finalD)
+            self.vesc_fit = fitfunc(ri,popt[0])
+        
+        #ax.plot(ri,np.abs(self.Ar_final),c='red',lw=2)
+        #ax.plot(ri,vesc_fit,c='green',lw=2)
+        #ax.plot(r,v,'k.')
+        #pcolormesh(ri,vi,Zi_inf.T)
+        #ax.set_ylim(0,3500)
+        #savefig('/nfs/christoq_ls/giffordw/flux_figs/surfacetests/nideal/'+str(bin-1)+'.png')
+        #close()
 
     def causticmembership(self,data,ri,caustics):
         self.memflag = np.zeros(data.shape[0])
@@ -595,6 +776,42 @@ class CausticSurface:
                 philimit = np.abs(Ar[i]) #phi integral limits
                 phir[i] = self.findphir(Zi[i][np.where((vi<philimit) & (vi>-philimit))],vi[np.where((vi<philimit) & (vi>-philimit))])
         return (np.trapz(Ar**2*phir,useri)/np.trapz(phir,useri),Ar)
+
+    def findvesc2(self,level,ri,vi,Zi,Zi_inf,r200):
+        """
+        Used by findsurface_inf to identify caustic surfaces
+
+        Parameters
+        ----------
+        level = density value
+
+        ri = x-grid values
+
+        vi = y-grid values
+
+        Zi = density image
+
+        Zi_inf = second derivative of density image
+
+        r200 = r200 of cluster
+
+        Returns
+        -------
+        (Ar,inf_val)
+
+        Ar = caustic surface
+
+        inf_val = inflection values along caustic surface
+        """
+        useri = ri[np.where((ri<r200) & (ri>=0))] #look only inside r200
+        Ar = np.zeros(useri.size)
+        inf_val = np.zeros(useri.size)
+        for i in range(useri.size):
+            Ar[i] = self.findAofr(level,Zi[np.where((ri<r200) & (ri>=0))][i],vi)
+            if i >0:
+                Ar[i] = self.restrict_gradient2(np.abs(Ar[i-1]),np.abs(Ar[i]),useri[i-1],useri[i])
+            inf_val[i] = Zi_inf[i][np.where(np.abs(vi-Ar[i]) == np.min(np.abs(vi-Ar[i])))][0]
+        return Ar,inf_val
 
     def findphir(self,shortZi,shortvi):
         short2Zi = np.ma.masked_array(shortZi)
@@ -756,8 +973,7 @@ class MassCalc:
         #self.M200_est = self.massprofile[np.where(ri[:self.f_beta.size] <= self.r200_est)[0][-1]]
         finterp = interp1d(ri[:self.f_beta.size],self.massprofile)
         self.M200_est = finterp(self.r200_est)
-        #self.M200 = self.massprofile[np.where(ri[:self.f_beta.size] <= r200)[0][-1]]
-        self.M200 = finterp(r200)
+        self.M200 = self.massprofile[np.where(ri[:self.f_beta.size] <= r200)[0][-1]]
             
 
         
