@@ -720,7 +720,7 @@ class CausticSurface:
                 #self.Ar_final_low[i] = self.restrict_gradient2(np.abs(self.Ar_final_low[i-1]),np.abs(self.Ar_final_low[i]),ri[i-1],ri[i])
         #Ar_final = self.Ar_final_opt[np.where(self.inf_avg == np.max(self.inf_avg))][0]
         #self.Ar_final = (self.Ar_final_high+self.Ar_final_low)/2.0
-        self.Ar_final = self.Ar_final_high
+        self.Ar_finalD = self.Ar_final_high
 
         ##Output galaxy membership
         kpc2km = 3.09e16
@@ -732,6 +732,15 @@ class CausticSurface:
             fitfunc = lambda x,a: np.sqrt(2*4*np.pi*6.67e-20*a*(30.0*kpc2km)**2*np.log(1+x/30.0)/(x/30.0))
             popt,pcov = curve_fit(fitfunc,ri,self.Ar_finalD)
             self.vesc_fit = fitfunc(ri,popt[0])
+
+        self.memflag = np.zeros(data.shape[0])
+        #fcomp = interp1d(ri,self.Ar_finalD)
+        #print ri.size, self.vesc_fit.size
+        fcomp = interp1d(ri,self.vesc_fit)
+        for k in range(self.memflag.size):
+            vcompare = fcomp(data[k,0])
+            if np.abs(vcompare) >= np.abs(data[k,1]):
+                self.memflag[k] = 1
         
         #ax.plot(ri,np.abs(self.Ar_final),c='red',lw=2)
         #ax.plot(ri,vesc_fit,c='green',lw=2)
