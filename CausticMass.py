@@ -56,7 +56,7 @@ class Caustic:
     def __init__(self):
         pass
     
-    def run_caustic(self,data,gal_mags=None,gal_memberflag=None,clus_ra=None,clus_dec=None,clus_z=None,gal_r=None,gal_v=None,r200=None,clus_vdisp=None,rlimit=4.0,vlimit=3500,q=10.0,H0=100.0,xmax=6.0,ymax=5000.0,cut_sample=True,gapper=True,mirror=True,absflag=False):
+    def run_caustic(self,data,gal_mags=None,gal_memberflag=None,clus_ra=None,clus_dec=None,clus_z=None,gal_r=None,gal_v=None,r200=None,clus_vdisp=None,rlimit=4.0,vlimit=3500,q=10.0,H0=100.0,xmax=6.0,ymax=5000.0,cut_sample=True,gapper=True,mirror=True,absflag=False,inflection=False):
         S = CausticSurface()
         self.clus_ra = clus_ra
         self.clus_dec = clus_dec
@@ -215,10 +215,16 @@ class Caustic:
         self.beta = 0.5*self.x_range/(self.x_range + self.r200/4.0)
         #Identify initial caustic surface and members within the surface
         print 'Calculating initial surface'
-        if gal_memberflag is None:
-            self.Caustics = CausticSurface.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None)
+        if inflection == False:
+            if gal_memberflag is None:
+                self.Caustics = CausticSurface.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None)
+            else:
+                self.Caustics = CausticSurface.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.data_set[:,-1],r200=self.r200)
         else:
-            self.Caustics = CausticSurface.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.data_set[:,-1],r200=self.r200)
+            if gal_memberflag is None:
+                self.Caustics = CausticSurface.findsurface_inf(self.data_set,self.x_range,self.y_range,self.img_tot,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None)
+            else:
+                self.Caustics = CausticSurface.findsurface_inf(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.data_set[:,-1],r200=self.r200)
 
         self.caustic_profile = self.Caustics.Ar_finalD
         self.caustic_fit = self.Caustics.vesc_fit
