@@ -217,19 +217,19 @@ class Caustic:
         print 'Calculating initial surface'
         if inflection == False:
             if gal_memberflag is None:
-                self.Caustics = CausticSurface.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None)
+                S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None)
             else:
-                self.Caustics = CausticSurface.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.data_set[:,-1],r200=self.r200)
+                S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.data_set[:,-1],r200=self.r200)
         else:
             if gal_memberflag is None:
-                self.Caustics = CausticSurface.findsurface_inf(self.data_set,self.x_range,self.y_range,self.img_tot,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None)
+                S.findsurface_inf(self.data_set,self.x_range,self.y_range,self.img_tot,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None)
             else:
-                self.Caustics = CausticSurface.findsurface_inf(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.data_set[:,-1],r200=self.r200)
+                S.findsurface_inf(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.data_set[:,-1],r200=self.r200)
 
-        self.caustic_profile = self.Caustics.Ar_finalD
-        self.caustic_fit = self.Caustics.vesc_fit
-        self.gal_vdisp = self.Caustics.gal_vdisp
-        self.memflag = self.Caustics.memflag
+        self.caustic_profile = S.Ar_finalD
+        self.caustic_fit = S.vesc_fit
+        self.gal_vdisp = S.gal_vdisp
+        self.memflag = S.memflag
 
         #Estimate the mass based off the caustic profile, beta profile (if given), and concentration (if given)
         if clus_z is not None:
