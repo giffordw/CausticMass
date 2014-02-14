@@ -245,8 +245,8 @@ class Caustic:
             self.M200_est = self.Mass.M200_est
             self.M200_est_fbeta = self.Mass2.M200_est
 
-            print 'r200 estimate: ',self.Mass.r200_est_fbeta
-            print 'M200 estimate: ',self.Mass.M200_est_fbeta
+            print 'r200 estimate: ',self.Mass2.r200_est
+            print 'M200 estimate: ',self.Mass2.M200_est
 
             self.Ngal = self.data_set[np.where((self.memflag==1)&(self.data_set[:,0]<=self.r200_est_fbeta))].shape[0]
 
