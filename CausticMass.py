@@ -686,19 +686,14 @@ class CausticSurface:
             self.Ar_final_opt[i],self.inf_vals[i] = self.findvesc2(self.levels[i],ri,vi,Zi,Zi_inf,r200)
             #ax.plot(ri[np.where((ri<r200) & (ri>=0))],np.abs(self.Ar_final_opt[i]),c='black',alpha=0.4) #plot each density contour
         self.inf_avg = np.average(self.inf_vals.T[fitting_radii],axis=0) #average inflection along each contour surface
-        self.Ar_avg = np.average((self.Ar_final_opt.T[ri<r200]).T,axis=1) #average velocity along each contour surface inside r200
+        self.Ar_avg = np.average(self.Ar_final_opt,axis=1) #average velocity along each contour surface inside r200
         
         #Need to identify maximum average inflection, so smooth the measurement. Might want to do this a non-parametric way
-        tryfit = np.polyfit(self.levels,self.inf_avg,7)
-        self.infyvals = tryfit[0]*self.levels**7+tryfit[1]*self.levels**6+tryfit[2]*self.levels**5+tryfit[3]*self.levels**4+tryfit[4]*self.levels**3+tryfit[5]*self.levels**2+tryfit[6]*self.levels+tryfit[7]
-        '''
-        s2 = figure()
-        ax2 = s2.add_subplot(111)
-        ax2.plot(self.Ar_avg,self.infyvals)
-        ax2.plot(self.Ar_avg,self.inf_avg,'k.')
-        savefig('/nfs/christoq_ls/giffordw/hi.png')
-        close()
-        '''
+        #tryfit = np.polyfit(self.levels,self.inf_avg,7)
+        #self.infyvals = tryfit[0]*self.levels**7+tryfit[1]*self.levels**6+tryfit[2]*self.levels**5+tryfit[3]*self.levels**4+tryfit[4]*self.levels**3+tryfit[5]*self.levels**2+tryfit[6]*self.levels+tryfit[7]
+        tryfit = np.polyfit(self.Ar_avg,self.inf_avg,7)
+        self.infyvals = tryfit[0]*self.Ar_avg**7+tryfit[1]*self.Ar_avg**6+tryfit[2]*self.Ar_avg**5+tryfit[3]*self.Ar_avg**4+tryfit[4]*self.Ar_avg**3+tryfit[5]*self.Ar_avg**2+tryfit[6]*self.Ar_avg+tryfit[7]
+        
         self.inf_std = np.std(self.inf_vals.T[fitting_radii],axis=0) #std of inflection along each caustic surface
         #self.level_elem = (self.levels[Ar_avg>np.sqrt(vvar)])[np.where(self.inf_avg[Ar_avg>np.sqrt(vvar)] == np.max(self.inf_avg[Ar_avg>np.sqrt(vvar)]))]
         self.level_elem = self.levels[np.where(self.inf_avg == np.max(self.inf_avg))][0]
