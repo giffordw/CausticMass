@@ -703,7 +703,7 @@ class CausticSurface:
         #self.level_elem = (self.levels[Ar_avg>np.sqrt(vvar)])[np.where(self.inf_avg[Ar_avg>np.sqrt(vvar)] == np.max(self.inf_avg[Ar_avg>np.sqrt(vvar)]))]
         self.level_elem = self.levels[np.where(self.inf_avg == np.max(self.inf_avg))][0]
         #low_zone = np.where((np.average(np.abs(self.Ar_final_opt),axis=1)>np.max(v)/2.0) & (np.average(np.abs(self.Ar_final_opt),axis=1)<np.max(v)))
-        high_zone = np.where((np.average(np.abs(self.Ar_final_opt),axis=1)>np.max(v)/2.0))
+        high_zone = np.where((np.average(np.abs(self.Ar_final_opt),axis=1)>np.max(data[:,1])/2.0))
         #level_elem_low = self.levels[low_zone][np.where(self.inf_avg[low_zone] == np.min(self.inf_avg[low_zone]))][-1]
         #level_elem_high = self.levels[high_zone][np.where(self.inf_avg[high_zone] == np.max(self.inf_avg[high_zone]))][-1]
         try:
