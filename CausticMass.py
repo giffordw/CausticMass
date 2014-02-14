@@ -57,7 +57,7 @@ class Caustic:
         pass
     
     def run_caustic(self,data,gal_mags=None,gal_memberflag=None,clus_ra=None,clus_dec=None,clus_z=None,gal_r=None,gal_v=None,r200=None,clus_vdisp=None,rlimit=4.0,vlimit=3500,q=10.0,H0=100.0,xmax=6.0,ymax=5000.0,cut_sample=True,gapper=True,mirror=True,absflag=False,inflection=False):
-        S = CausticSurface()
+        self.S = CausticSurface()
         self.clus_ra = clus_ra
         self.clus_dec = clus_dec
         self.clus_z = clus_z
@@ -217,19 +217,19 @@ class Caustic:
         print 'Calculating initial surface'
         if inflection == False:
             if gal_memberflag is None:
-                S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None)
+                self.S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None)
             else:
-                S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.data_set[:,-1],r200=self.r200)
+                self.S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.data_set[:,-1],r200=self.r200)
         else:
             if gal_memberflag is None:
-                S.findsurface_inf(self.data_set,self.x_range,self.y_range,self.img_tot,self.img_inf,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None)
+                self.S.findsurface_inf(self.data_set,self.x_range,self.y_range,self.img_tot,self.img_inf,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None)
             else:
-                S.findsurface_inf(self.data_set,self.x_range,self.y_range,self.img_tot,self.img_inf,memberflags=self.data_set[:,-1],r200=self.r200)
+                self.S.findsurface_inf(self.data_set,self.x_range,self.y_range,self.img_tot,self.img_inf,memberflags=self.data_set[:,-1],r200=self.r200)
 
-        self.caustic_profile = S.Ar_finalD
-        self.caustic_fit = S.vesc_fit
-        self.gal_vdisp = S.gal_vdisp
-        self.memflag = S.memflag
+        self.caustic_profile = self.S.Ar_finalD
+        self.caustic_fit = self.S.vesc_fit
+        self.gal_vdisp = self.S.gal_vdisp
+        self.memflag = self.S.memflag
 
         #Estimate the mass based off the caustic profile, beta profile (if given), and concentration (if given)
         if clus_z is not None:
@@ -245,10 +245,10 @@ class Caustic:
             self.M200_est = self.Mass.M200_est
             self.M200_est_fbeta = self.Mass2.M200_est
 
-            print 'r200 estimate: ',self.Mass.r200_est
-            print 'M200 estimate: ',self.Mass.M200_est
+            print 'r200 estimate: ',self.Mass.r200_est_fbeta
+            print 'M200 estimate: ',self.Mass.M200_est_fbeta
 
-            self.Ngal = self.data_set[np.where((self.memflag==1)&(self.data_set[:,0]<=self.r200_est))].shape[0]
+            self.Ngal = self.data_set[np.where((self.memflag==1)&(self.data_set[:,0]<=self.r200_est_fbeta))].shape[0]
 
             #calculate velocity dispersion
         try:
