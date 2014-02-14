@@ -683,7 +683,7 @@ class CausticSurface:
         #s = figure()
         #ax = s.add_subplot(111)
         for i in range(self.levels.size): # find the escape velocity for all level (kappa) guesses
-            self.Ar_final_opt[i],self.inf_vals[i] = self.findvesc2(self.levels[i],ri,vi,Zi,Zi_inf,norm,r200)
+            self.Ar_final_opt[i],self.inf_vals[i] = self.findvesc2(self.levels[i],ri,vi,Zi,Zi_inf,r200)
             #ax.plot(ri[np.where((ri<r200) & (ri>=0))],np.abs(self.Ar_final_opt[i]),c='black',alpha=0.4) #plot each density contour
         self.inf_avg = np.average(self.inf_vals.T[fitting_radii],axis=0) #average inflection along each contour surface
         self.Ar_avg = np.average((self.Ar_final_opt.T[ri<r200]).T,axis=1) #average velocity along each contour surface inside r200
