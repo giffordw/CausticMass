@@ -21,17 +21,18 @@ MassCalc:
 
 """
 import matplotlib
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 import numpy as np
 import cosmolopy.distance as cd
 from cosmolopy import magnitudes, fidcosmo
 from matplotlib.pyplot import *
-import astStats
+#from astLib import astStats
 import scipy.ndimage as ndi
 from scipy.optimize import curve_fit
 from scipy.interpolate import interp1d
 import pdb
 import warnings
+from astropy import stats
 
 warnings.filterwarnings('ignore')
 
@@ -130,7 +131,7 @@ class Caustic:
         '''
         if r200 == None:
             #self.r200 = 0.01*self.Ngal_1mpc+0.584#+np.random.normal(0,0.099)
-            vdisp_prelim = astStats.biweightScale(self.data_set[:,1][np.where(self.data_set[:,0]<3.0)],9.0)
+            vdisp_prelim = stats.biweight_midvariance(self.data_set[:,1][np.where(self.data_set[:,0]<3.0)],9.0)
             r200_mean_prelim = 0.002*vdisp_prelim + 0.40
             self.r200 = r200_mean_prelim/1.7
             '''
@@ -173,7 +174,7 @@ class Caustic:
             #print 'Ngal<1Mpc=',self.Ngal_1mpc
             v_cut = self.data_set[:,1][np.where((self.data_set[:,0]<self.r200) & (np.abs(self.data_set[:,1])<5000.0))]
             try:
-                self.pre_vdisp2 = astStats.biweightScale(v_cut,9.0)
+                self.pre_vdisp2 = stats.biweight_midvariance(v_cut,9.0)
             except:
                 self.pre_vdisp2 = np.std(v_cut,ddof=1)
             print 'Vdisp from galaxies=',self.pre_vdisp2
@@ -252,7 +253,7 @@ class Caustic:
 
             #calculate velocity dispersion
         try:
-            self.vdisp_gal = astStats.biweightScale(self.data_set[:,1][self.memflag==1],9.0)
+            self.vdisp_gal = stats.biweight_midvariance(self.data_set[:,1][self.memflag==1],9.0)
         except:
             try:
                 self.vdisp_gal = np.std(self.data_set[:,1][self.memflag==1],ddof=1)
@@ -441,12 +442,17 @@ class Caustic:
         self.img_inf : second derivative of img
         """
         
+        self.x_range = np.arange(0,xmax,0.03)
+        self.y_range = np.arange(-ymax,ymax,45)
+        xres = self.x_range.size
+        yres = self.y_range.size
+
         self.x_scale = xvalues/xmax*xres
         self.y_scale = ((yvalues+ymax)/(normalization*scale))/((ymax*2.0)/(normalization*scale))*yres
 
-        self.imgr = np.zeros((xres+1,yres+1))
-        self.x_range = np.linspace(0,xmax,xres+1)
-        self.y_range = np.linspace(-ymax,ymax,yres+1) 
+        self.imgr = np.zeros((xres,yres))
+        #self.x_range = np.linspace(0,xmax,xres+1)
+        #self.y_range = np.linspace(-ymax,ymax,yres+1)
 
         for j in range(xvalues.size):
             self.imgr[self.x_scale[j],self.y_scale[j]] += 1
@@ -459,10 +465,11 @@ class Caustic:
         #Gaussian
         self.ksize_x = (4.0/(3.0*xvalues.size))**(1/5.0)*np.std(self.x_scale[xvalues<r200])
         self.ksize_y = (4.0/(3.0*yvalues.size))**(1/5.0)*np.std(self.y_scale[xvalues<r200])
+        print self.ksize_x/xres*xmax
         
         #smooth with estimated kernel sizes
         #self.img = ndi.uniform_filter(self.imgr, (self.ksize,self.ksize))#,mode='reflect')
-        self.img = ndi.gaussian_filter(self.imgr, (self.ksize_y,self.ksize_x),mode='reflect')
+        self.img = ndi.gaussian_filter(self.imgr, (self.ksize_x,self.ksize_y),mode='reflect')
         self.img_grad = ndi.gaussian_gradient_magnitude(self.imgr, (self.ksize_y,self.ksize_x))
         self.img_inf = ndi.gaussian_gradient_magnitude(ndi.gaussian_gradient_magnitude(self.imgr, (self.ksize_y,self.ksize_x)), (self.ksize_y,self.ksize_x))
 
@@ -522,7 +529,7 @@ class CausticSurface:
         if memberflags is not None:
             vvarcal = data[:,1][np.where(memberflags==1)]
             try:
-                self.gal_vdisp = astStats.biweightScale(vvarcal[np.where(np.isfinite(vvarcal))],9.0)
+                self.gal_vdisp = stats.biweight_midvariance(vvarcal[np.where(np.isfinite(vvarcal))],9.0)
                 print 'O ya! membership calculation!'
             except:
                 self.gal_vdisp = np.std(vvarcal,ddof=1)
@@ -569,14 +576,14 @@ class CausticSurface:
         if plotphase == True:
             s =figure()
             ax = s.add_subplot(111)
-            ax.plot(data[:,0],data[:,1],'k.')
+            #ax.plot(data[:,0],data[:,1],'k.')
             for t in range(Ar_final_opt.shape[0]):
                 ax.plot(ri[:Ar_final_opt[t].size],Ar_final_opt[t],c='0.4',alpha=0.5)
                 ax.plot(ri[:Ar_final_opt[t].size],-Ar_final_opt[t],c='0.4',alpha=0.5)
             ax.plot(ri,self.Ar_finalD,c='blue')
             ax.plot(ri,-self.Ar_finalD,c='blue')
-            ax.set_ylim(-3500,3500)
-            s.savefig('/nfs/christoq_ls/giffordw/plotphase.png')
+            ax.set_ylim(0,5000)
+            s.savefig('plotphase.png')
             close()
 
         ##Output galaxy membership
@@ -662,7 +669,7 @@ class CausticSurface:
         if memberflags is not None:
             vvarcal = data[:,1][np.where(memberflags==1)]
             try:
-                self.gal_vdisp = astStats.biweightScale(vvarcal[np.where(np.isfinite(vvarcal))],9.0)
+                self.gal_vdisp = stats.biweight_midvariance(vvarcal[np.where(np.isfinite(vvarcal))],9.0)
                 print 'O ya! membership calculation!'
             except:
                 self.gal_vdisp = np.std(vvarcal,ddof=1)
@@ -765,7 +772,7 @@ class CausticSurface:
         """
         v_cut = v[np.where((r<r200) & (np.abs(v)<maxv))]
         try:
-            self.gal_vdisp = astStats.biweightScale(v_cut,9.0)
+            self.gal_vdisp = stats.biweight_midvariance(v_cut,9.0)
         except:
             self.gal_vdisp = np.std(v_cut,ddof=1)
 
@@ -838,7 +845,7 @@ class CausticSurface:
         Finds the velocity where kappa is
         """
         dens0 = Zi[np.where(vgridvals>=0)][0]
-        if dens0 >= level:
+        if dens0:#dens0 >= level:
             maxdens = 0.0 #v value we are centering on
             highvalues = Zi[np.where(vgridvals >= maxdens)] #density values above the center v value maxdens
             lowvalues = Zi[np.where(vgridvals < maxdens)] #density values below the center v value maxdens
@@ -864,7 +871,8 @@ class CausticSurface:
                 return lowamp
             if np.abs(highamp) < np.abs(lowamp):
                 return highamp
-        else: return 0 #no maximum density exists
+        else: 
+            return 0 #no maximum density exists
 
     def restrict_gradient2(self,pastA,newA,pastr,newr):
         """
@@ -888,7 +896,14 @@ class CausticSurface:
         starting with the corresponding value to the v value closest to the maximum and working toward
         the edges (high to low density in general).'''
         slot = dvals.size - 1
+        if len(dvals[dvals>level])== 0:
+            slot = 0
+            return slot
         for i in range(dvals.size):
+            if dvals[i] == 0.0:
+                continue
+            if i < np.where(dvals>level)[0][0]:
+                continue
             if level >= dvals[i]:
                 if i != 0:
                     slot = i-1
