@@ -57,7 +57,7 @@ class Caustic:
     def __init__(self):
         pass
     
-    def run_caustic(self,data,gal_mags=None,gal_memberflag=None,clus_ra=None,clus_dec=None,clus_z=None,gal_r=None,gal_v=None,r200=None,clus_vdisp=None,rlimit=4.0,vlimit=3500,q=10.0,H0=100.0,xmax=6.0,ymax=5000.0,cut_sample=True,gapper=True,mirror=True,absflag=False,inflection=False):
+    def run_caustic(self,data,gal_mags=None,gal_memberflag=None,clus_ra=None,clus_dec=None,clus_z=None,gal_r=None,gal_v=None,r200=None,clus_vdisp=None,rlimit=4.0,vlimit=3500,q=50.0,H0=100.0,xmax=6.0,ymax=5000.0,cut_sample=True,gapper=True,mirror=True,absflag=False,inflection=False):
         self.S = CausticSurface()
         self.clus_ra = clus_ra
         self.clus_dec = clus_dec
@@ -402,7 +402,7 @@ class Caustic:
         return datafinal
 
     
-    def gaussian_kernel(self,xvalues,yvalues,r200,normalization=100,scale=10,xres=200,yres=220,xmax=6.0,ymax=5000.0,adj=20):
+    def gaussian_kernel(self,xvalues,yvalues,r200,normalization=100,scale=50,xres=200,yres=220,xmax=6.0,ymax=5000.0,adj=20):
         """
         Uses a 2D gaussian kernel to estimate the density of the phase space.
         As of now, the maximum radius extends to 6Mpc and the maximum velocity allowed is 5000km/s
@@ -443,12 +443,13 @@ class Caustic:
         """
         
         self.x_range = np.arange(0,xmax,0.03)
-        self.y_range = np.arange(-ymax,ymax,45)
         xres = self.x_range.size
+        self.y_range = np.arange(-ymax,ymax,2.0*ymax/(2*xres))
         yres = self.y_range.size
+        grid_ratio = (((2.0*ymax)/yres)/100.0)/(xmax/xres)
 
-        self.x_scale = xvalues/xmax*xres
-        self.y_scale = ((yvalues+ymax)/(normalization*scale))/((ymax*2.0)/(normalization*scale))*yres
+        self.x_scale = (xvalues/xmax)*xres
+        self.y_scale = ((yvalues+ymax)/(ymax*2.0))*yres
 
         self.imgr = np.zeros((xres,yres))
         #self.x_range = np.linspace(0,xmax,xres+1)
@@ -464,7 +465,8 @@ class Caustic:
         #    self.ksize = 3.5
         #Gaussian
         self.ksize_x = (4.0/(3.0*xvalues.size))**(1/5.0)*np.std(self.x_scale[xvalues<r200])
-        self.ksize_y = (4.0/(3.0*yvalues.size))**(1/5.0)*np.std(self.y_scale[xvalues<r200])
+        self.ksize_y = self.ksize_x*scale/grid_ratio
+        #self.ksize_y = (4.0/(3.0*yvalues.size))**(1/5.0)*np.std(self.y_scale[xvalues<r200])
         print self.ksize_x/xres*xmax
         
         #smooth with estimated kernel sizes
