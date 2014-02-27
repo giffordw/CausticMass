@@ -472,8 +472,8 @@ class Caustic:
         #smooth with estimated kernel sizes
         #self.img = ndi.uniform_filter(self.imgr, (self.ksize,self.ksize))#,mode='reflect')
         self.img = ndi.gaussian_filter(self.imgr, (self.ksize_x,self.ksize_y),mode='reflect')
-        self.img_grad = ndi.gaussian_gradient_magnitude(self.imgr, (self.ksize_y,self.ksize_x))
-        self.img_inf = ndi.gaussian_gradient_magnitude(ndi.gaussian_gradient_magnitude(self.imgr, (self.ksize_y,self.ksize_x)), (self.ksize_y,self.ksize_x))
+        self.img_grad = ndi.gaussian_gradient_magnitude(self.imgr, (self.ksize_x,self.ksize_y))
+        self.img_inf = ndi.gaussian_gradient_magnitude(ndi.gaussian_gradient_magnitude(self.imgr, (self.ksize_x,self.ksize_y)), (self.ksize_x,self.ksize_y))
 
 
 
