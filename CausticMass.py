@@ -446,7 +446,7 @@ class Caustic:
         xres = self.x_range.size
         self.y_range = np.arange(-ymax,ymax,2.0*ymax/(2*xres))
         yres = self.y_range.size
-        grid_ratio = (((2.0*ymax)/yres)/100.0)/(xmax/xres)
+        grid_ratio = (((2.0*ymax)/yres)/normalization)/(xmax/xres)
 
         self.x_scale = (xvalues/xmax)*xres
         self.y_scale = ((yvalues+ymax)/(ymax*2.0))*yres
