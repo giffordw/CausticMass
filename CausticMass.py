@@ -21,18 +21,17 @@ MassCalc:
 
 """
 import matplotlib
-#matplotlib.use('Agg')
+matplotlib.use('Agg')
 import numpy as np
 import cosmolopy.distance as cd
 from cosmolopy import magnitudes, fidcosmo
 from matplotlib.pyplot import *
-#from astLib import astStats
+import astStats
 import scipy.ndimage as ndi
 from scipy.optimize import curve_fit
 from scipy.interpolate import interp1d
 import pdb
 import warnings
-from astropy import stats
 
 warnings.filterwarnings('ignore')
 
@@ -131,7 +130,7 @@ class Caustic:
         '''
         if r200 == None:
             #self.r200 = 0.01*self.Ngal_1mpc+0.584#+np.random.normal(0,0.099)
-            vdisp_prelim = stats.biweight_midvariance(self.data_set[:,1][np.where(self.data_set[:,0]<3.0)],9.0)
+            vdisp_prelim = astStats.biweightScale(self.data_set[:,1][np.where(self.data_set[:,0]<3.0)],9.0)
             r200_mean_prelim = 0.002*vdisp_prelim + 0.40
             self.r200 = r200_mean_prelim/1.7
             '''
@@ -174,7 +173,7 @@ class Caustic:
             #print 'Ngal<1Mpc=',self.Ngal_1mpc
             v_cut = self.data_set[:,1][np.where((self.data_set[:,0]<self.r200) & (np.abs(self.data_set[:,1])<5000.0))]
             try:
-                self.pre_vdisp2 = stats.biweight_midvariance(v_cut,9.0)
+                self.pre_vdisp2 = astStats.biweightScale(v_cut[np.where(np.isfinite(v_cut))],9.0)
             except:
                 self.pre_vdisp2 = np.std(v_cut,ddof=1)
             print 'Vdisp from galaxies=',self.pre_vdisp2
@@ -253,7 +252,7 @@ class Caustic:
 
             #calculate velocity dispersion
         try:
-            self.vdisp_gal = stats.biweight_midvariance(self.data_set[:,1][self.memflag==1],9.0)
+            self.vdisp_gal = stats.biweightScale(self.data_set[:,1][self.memflag==1],9.0)
         except:
             try:
                 self.vdisp_gal = np.std(self.data_set[:,1][self.memflag==1],ddof=1)
@@ -467,7 +466,6 @@ class Caustic:
         self.ksize_x = (4.0/(3.0*xvalues.size))**(1/5.0)*np.std(self.x_scale[xvalues<r200])
         self.ksize_y = self.ksize_x*scale/grid_ratio
         #self.ksize_y = (4.0/(3.0*yvalues.size))**(1/5.0)*np.std(self.y_scale[xvalues<r200])
-        print self.ksize_x/xres*xmax
         
         #smooth with estimated kernel sizes
         #self.img = ndi.uniform_filter(self.imgr, (self.ksize,self.ksize))#,mode='reflect')
@@ -531,7 +529,7 @@ class CausticSurface:
         if memberflags is not None:
             vvarcal = data[:,1][np.where(memberflags==1)]
             try:
-                self.gal_vdisp = stats.biweight_midvariance(vvarcal[np.where(np.isfinite(vvarcal))],9.0)
+                self.gal_vdisp = astStats.biweightScale(vvarcal[np.where(np.isfinite(vvarcal))],9.0)
                 print 'O ya! membership calculation!'
             except:
                 self.gal_vdisp = np.std(vvarcal,ddof=1)
@@ -671,7 +669,7 @@ class CausticSurface:
         if memberflags is not None:
             vvarcal = data[:,1][np.where(memberflags==1)]
             try:
-                self.gal_vdisp = stats.biweight_midvariance(vvarcal[np.where(np.isfinite(vvarcal))],9.0)
+                self.gal_vdisp = astStats.biweightScale(vvarcal[np.where(np.isfinite(vvarcal))],9.0)
                 print 'O ya! membership calculation!'
             except:
                 self.gal_vdisp = np.std(vvarcal,ddof=1)
@@ -774,7 +772,7 @@ class CausticSurface:
         """
         v_cut = v[np.where((r<r200) & (np.abs(v)<maxv))]
         try:
-            self.gal_vdisp = stats.biweight_midvariance(v_cut,9.0)
+            self.gal_vdisp = astStats.biweightScale(v_cut[np.where(np.isfinite(v_cut))],9.0)
         except:
             self.gal_vdisp = np.std(v_cut,ddof=1)
 
