@@ -26,7 +26,7 @@ import numpy as np
 import cosmolopy.distance as cd
 from cosmolopy import magnitudes, fidcosmo
 from matplotlib.pyplot import *
-import astStats
+from astLib import astStats
 import scipy.ndimage as ndi
 from scipy.optimize import curve_fit
 from scipy.interpolate import interp1d
@@ -440,7 +440,12 @@ class Caustic:
         self.img_grad : first derivative of img
         self.img_inf : second derivative of img
         """
-        
+
+        if np.max(xvalues) >= xmax:
+            raise Exception('Bounding Error: Please either increase your xmax value or trim your sample to be x < '+str(xmax))
+        if np.max(np.abs(yvalues)) >= ymax:
+            raise Exception('Bounding Error: Please either increase your ymax value or trim your sample to be y < '+str(ymax))
+
         self.x_range = np.arange(0,xmax,0.03)
         xres = self.x_range.size
         self.y_range = np.arange(-ymax,ymax,2.0*ymax/(2*xres))
