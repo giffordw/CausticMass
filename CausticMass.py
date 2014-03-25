@@ -21,12 +21,12 @@ MassCalc:
 
 """
 import matplotlib
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 import numpy as np
 import cosmolopy.distance as cd
 from cosmolopy import magnitudes, fidcosmo
 from matplotlib.pyplot import *
-import astStats
+from astLib import astStats
 import scipy.ndimage as ndi
 from scipy.optimize import curve_fit
 from scipy.interpolate import interp1d
@@ -420,7 +420,7 @@ class Caustic:
 
         normalization = 100 : This is equivalent to H0. Default is H0=100
 
-        scale = 10 : "q" parameter in Diaferio 99. Literature says this can be between 10-50
+        scale = 50 : "q" parameter in Diaferio 99. Literature says this can be between 10-50
 
         xres = 200 : x-grid resolution
 
@@ -514,7 +514,8 @@ class CausticSurface:
     
     def findsurface(self,data,ri,vi,Zi,memberflags=None,r200=2.0,maxv=5000.0,halo_scale_radius=None,halo_scale_radius_e=0.01,halo_vdisp=None,bin=None,plotphase=True,beta=None):
         kappaguess = np.max(Zi) #first guess at the level
-        self.levels = np.linspace(0.00001,kappaguess,100)[::-1] #create levels (kappas) to try out
+        #self.levels = np.linspace(0.00001,kappaguess,100)[::-1] #create levels (kappas) to try out
+        self.levels = 10**(np.linspace(np.log10(np.min(Zi[Zi>0]/5.0)),np.log10(kappaguess),200)[::-1]) 
         fitting_radii = np.where((ri>=r200/3.0) & (ri<=r200)) #when fitting an NFW (later), this defines the r range to fit within
 
         self.r200 = r200
@@ -581,12 +582,14 @@ class CausticSurface:
         if plotphase == True:
             s =figure()
             ax = s.add_subplot(111)
-            #ax.plot(data[:,0],data[:,1],'k.')
+            ax.plot(data[:,0],data[:,1],'k.',markersize=0.5,alpha=0.8)
             for t in range(Ar_final_opt.shape[0]):
                 ax.plot(ri[:Ar_final_opt[t].size],Ar_final_opt[t],c='0.4',alpha=0.5)
                 ax.plot(ri[:Ar_final_opt[t].size],-Ar_final_opt[t],c='0.4',alpha=0.5)
             ax.plot(ri,self.Ar_finalD,c='blue')
             ax.plot(ri,-self.Ar_finalD,c='blue')
+            ax.axhline(np.sqrt(4*self.vvar),c='black',ls='..')
+            ax.axhline(np.sqrt(self.vesc[self.level_elem]),c='green',ls='--')
             ax.set_ylim(0,5000)
             s.savefig('plotphase.png')
             close()
@@ -849,8 +852,10 @@ class CausticSurface:
         """
         Finds the velocity where kappa is
         """
-        dens0 = Zi[np.where(vgridvals>=0)][0]
-        if dens0:#dens0 >= level:
+        #dens0 = Zi[np.where(vgridvals>=0)][0]
+        dens0 = np.max(Zi)
+        #if dens0:#dens0 >= level:
+        if dens0 >= level:
             maxdens = 0.0 #v value we are centering on
             highvalues = Zi[np.where(vgridvals >= maxdens)] #density values above the center v value maxdens
             lowvalues = Zi[np.where(vgridvals < maxdens)] #density values below the center v value maxdens
@@ -900,6 +905,7 @@ class CausticSurface:
         where the level finally falls below the given level. Density values should be in order
         starting with the corresponding value to the v value closest to the maximum and working toward
         the edges (high to low density in general).'''
+        
         slot = dvals.size - 1
         if len(dvals[dvals>level])== 0:
             slot = 0
@@ -917,6 +923,21 @@ class CausticSurface:
                     slot = i
                     break
         return slot
+        '''
+        slot = dvals.size - 1
+        if level > np.max(dvals):
+            return 0
+        else:
+            for i in range(dvals.size):
+                if level >= dvals[i] and i > np.where(dvals==np.max(dvals))[0][-1]:
+                    if i != 0:
+                        slot = i-1
+                        break
+                    else:
+                        slot = i
+                        break
+        return slot
+        '''
 
     def NFWfit(self,ri,Ar,halo_srad,ri_full,g_b):
         min_func = lambda x,d0: np.sqrt(2*4*np.pi*4.5e-48*d0*(halo_srad)**2*np.log(1+x/halo_srad)/(x/halo_srad))*3.08e19
