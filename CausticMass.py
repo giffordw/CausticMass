@@ -106,6 +106,7 @@ class Caustic:
             self.data_set = self.data_table
 
         if self.data_set.shape[0] < 2:
+            print 'Encountered Error: Data set has too few elements. Check the r and v objects. Could indicate wrong cluster/galaxy positions or redshifts'
             return 0
         
 
@@ -159,10 +160,10 @@ class Caustic:
 
         if mirror == True:
             print 'Calculating Density w/Mirrored Data'
-            self.gaussian_kernel(np.append(self.data_set[:,0],self.data_set[:,0]),np.append(self.data_set[:,1],-self.data_set[:,1]),self.r200,normalization=H0,scale=q,xmax=xmax,ymax=ymax,xres=200,yres=220)
+            self.gaussian_kernel(np.append(self.data_set[:,0],self.data_set[:,0]),np.append(self.data_set[:,1],-self.data_set[:,1]),self.r200,normalization=H0,scale=q,xmax=xmax,ymax=ymax,xres=100)
         else:
             print 'Calculating Density'
-            self.gaussian_kernel(self.data_set[:,0],self.data_set[:,1],self.r200,normalization=H0,scale=q,xmax=xmax,ymax=ymax,xres=200,yres=220)
+            self.gaussian_kernel(self.data_set[:,0],self.data_set[:,1],self.r200,normalization=H0,scale=q,xmax=xmax,ymax=ymax,xres=100)
         self.img_tot = self.img/np.max(np.abs(self.img))
         self.img_grad_tot = self.img_grad/np.max(np.abs(self.img_grad))
         self.img_inf_tot = self.img_inf/np.max(np.abs(self.img_inf))
@@ -217,9 +218,9 @@ class Caustic:
         print 'Calculating initial surface'
         if inflection == False:
             if gal_memberflag is None:
-                self.S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None)
+                self.S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None,mirror=mirror)
             else:
-                self.S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.data_set[:,-1],r200=self.r200)
+                self.S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.data_set[:,-1],r200=self.r200,mirror=mirror)
         else:
             if gal_memberflag is None:
                 self.S.findsurface_inf(self.data_set,self.x_range,self.y_range,self.img_tot,self.img_inf,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None)
@@ -451,6 +452,7 @@ class Caustic:
         self.y_range = np.arange(-ymax,ymax,2.0*ymax/(2*xres))
         yres = self.y_range.size
         grid_ratio = (((2.0*ymax)/yres)/normalization)/(xmax/xres)
+        print xres,yres
 
         self.x_scale = (xvalues/xmax)*xres
         self.y_scale = ((yvalues+ymax)/(ymax*2.0))*yres
@@ -512,10 +514,10 @@ class CausticSurface:
     def __init__(self):
         pass
     
-    def findsurface(self,data,ri,vi,Zi,memberflags=None,r200=2.0,maxv=5000.0,halo_scale_radius=None,halo_scale_radius_e=0.01,halo_vdisp=None,bin=None,plotphase=True,beta=None):
+    def findsurface(self,data,ri,vi,Zi,memberflags=None,r200=2.0,maxv=5000.0,halo_scale_radius=None,halo_scale_radius_e=0.01,halo_vdisp=None,bin=None,plotphase=True,beta=None,mirror=True):
         kappaguess = np.max(Zi) #first guess at the level
         #self.levels = np.linspace(0.00001,kappaguess,100)[::-1] #create levels (kappas) to try out
-        self.levels = 10**(np.linspace(np.log10(np.min(Zi[Zi>0]/5.0)),np.log10(kappaguess),200)[::-1]) 
+        self.levels = 10**(np.linspace(np.log10(np.min(Zi[Zi>0]/5.0)),np.log10(kappaguess),100)[::-1]) 
         fitting_radii = np.where((ri>=r200/3.0) & (ri<=r200)) #when fitting an NFW (later), this defines the r range to fit within
 
         self.r200 = r200
@@ -553,13 +555,13 @@ class CausticSurface:
         
         #initilize arrays
         self.vesc = np.zeros(self.levels.size)
-        Ar_final_opt = np.zeros((self.levels.size,ri[np.where((ri<r200) & (ri>=0))].size))
+        self.Ar_final_opt = np.zeros((self.levels.size,ri[np.where((ri<r200) & (ri>=0))].size))
         
         #find the escape velocity for all level (kappa) guesses
         for i in range(self.vesc.size):
-            self.vesc[i],Ar_final_opt[i] = self.findvesc(self.levels[i],ri,vi,Zi,r200)
+            self.vesc[i],self.Ar_final_opt[i] = self.findvesc(self.levels[i],ri,vi,Zi,r200)
         
-        #difference equation to search for minimum value
+        #optimization equation to search for minimum value
         self.skr = (self.vesc-4.0*self.vvar)**2
         
         try:
@@ -574,6 +576,45 @@ class CausticSurface:
         #This exception occurs if self.skr is entirely NAN. A flag should be raised for this in the output table
         except ValueError:
             self.Ar_finalD = np.zeros(ri.size)
+
+        #Identify sharp phase-space edge
+        numbins = 10
+        perc_top = 0.01 #what percent of top velocity galaxies per/bin used to identify surface
+        numrval = (data[:,0][data[:,0]< r200]).size
+        size_bin = int(np.ceil(numrval*1.0/numbins))
+        rsort = data[:,0][np.argsort(data[:,0])]
+        if mirror == True:
+            vsort = np.abs(data[:,1][np.argsort(data[:,0])])
+        else:
+            vsort = data[:,1][np.argsort(data[:,0])]
+        mid_rbin = np.array([])
+        avgmax = np.array([])
+        for nn in range(numbins):
+            vbin = vsort[nn*size_bin:(nn+1)*size_bin]
+            rbin = rsort[nn*size_bin:(nn+1)*size_bin]
+            vmax = (vbin[np.argsort(vbin)][::-1])[:5]#int(np.ceil(vbin.size*perc_top))]
+            avgmax = np.append(avgmax,np.average(vmax))
+            mid_rbin = np.append(mid_rbin,np.median(rbin))
+        chi = np.array([])
+        for nn in range(self.Ar_final_opt.shape[0]):
+            fint = interp1d(ri[ri<r200],self.Ar_final_opt[nn])
+            Ar_comp = fint(mid_rbin[mid_rbin<r200])
+            chi = np.append(chi,np.sum((Ar_comp-avgmax[mid_rbin<r200])**2))
+        #pdb.set_trace()
+        try:
+            self.level_finalE = ((self.levels[np.isfinite(chi)])[np.where(chi[np.isfinite(chi)] == np.min(chi[np.isfinite(chi)]))])[0]
+            self.Ar_finalE = np.zeros(ri.size)
+            for k in range(self.Ar_finalE.size):
+                self.Ar_finalE[k] = self.findAofr(self.level_finalE,Zi[k],vi)
+                if k != 0:
+                    self.Ar_finalE[k] = self.restrict_gradient2(np.abs(self.Ar_finalE[k-1]),np.abs(self.Ar_finalE[k]),ri[k-1],ri[k])
+        except ValueError:
+            self.Ar_finalE = np.zeros(ri.size)
+        #plot(data[:,0][data[:,0]<r200],data[:,1][data[:,0]<r200],'ko',markersize=1,alpha=0.4)
+        #plot(ri[ri<r200],((self.Ar_final_opt[np.isfinite(chi)])[np.where(chi[np.isfinite(chi)] == np.min(chi[np.isfinite(chi)]))])[0])
+        #plot(ri,self.Ar_finalD,c='blue')
+        #xlim(0,1.6)
+        #show()
         
         #fit an NFW to the resulting caustic profile.
         self.NFWfit(ri[fitting_radii],self.Ar_finalD[fitting_radii]*np.sqrt(self.gb[fitting_radii]),self.halo_scale_radius,ri,self.gb)
@@ -583,11 +624,12 @@ class CausticSurface:
             s =figure()
             ax = s.add_subplot(111)
             ax.plot(data[:,0],data[:,1],'k.',markersize=0.5,alpha=0.8)
-            for t in range(Ar_final_opt.shape[0]):
-                ax.plot(ri[:Ar_final_opt[t].size],Ar_final_opt[t],c='0.4',alpha=0.5)
-                ax.plot(ri[:Ar_final_opt[t].size],-Ar_final_opt[t],c='0.4',alpha=0.5)
+            for t in range(self.Ar_final_opt.shape[0]):
+                ax.plot(ri[:self.Ar_final_opt[t].size],self.Ar_final_opt[t],c='0.4',alpha=0.5)
+                ax.plot(ri[:self.Ar_final_opt[t].size],-self.Ar_final_opt[t],c='0.4',alpha=0.5)
             ax.plot(ri,self.Ar_finalD,c='blue')
             ax.plot(ri,-self.Ar_finalD,c='blue')
+            ax.plot(mid_rbin,avgmax,c='r')
             ax.axhline(np.sqrt(4*self.vvar),c='black',ls='..')
             ax.axhline(np.sqrt(self.vesc[self.level_elem]),c='green',ls='--')
             ax.set_ylim(0,5000)
@@ -881,7 +923,7 @@ class CausticSurface:
                 return lowamp
             if np.abs(highamp) < np.abs(lowamp):
                 return highamp
-        else: 
+        else:
             return 0 #no maximum density exists
 
     def restrict_gradient2(self,pastA,newA,pastr,newr):
@@ -889,7 +931,7 @@ class CausticSurface:
         It is necessary to restrict the gradient the caustic can change at in order to be physical
         """
         if pastA <= newA:
-            if (np.log(newA)-np.log(pastA))/(np.log(newr)-np.log(pastr)) > 3.0:
+            if (np.log(newA)-np.log(pastA))/(np.log(newr)-np.log(pastr)) > 3.0 and pastA != 0:
                 dr = np.log(newr)-np.log(pastr)
                 return np.exp(np.log(pastA) + 2*dr)
             else: return newA
