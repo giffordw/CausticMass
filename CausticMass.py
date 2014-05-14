@@ -56,7 +56,7 @@ class Caustic:
     def __init__(self):
         pass
     
-    def run_caustic(self,data,gal_mags=None,gal_memberflag=None,clus_ra=None,clus_dec=None,clus_z=None,gal_r=None,gal_v=None,r200=None,clus_vdisp=None,rlimit=4.0,vlimit=3500,q=50.0,H0=100.0,xmax=6.0,ymax=5000.0,cut_sample=True,gapper=True,mirror=True,absflag=False,inflection=False):
+    def run_caustic(self,data,gal_mags=None,gal_memberflag=None,clus_ra=None,clus_dec=None,clus_z=None,gal_r=None,gal_v=None,r200=None,clus_vdisp=None,rlimit=4.0,vlimit=3500,q=10.0,H0=100.0,xmax=6.0,ymax=5000.0,cut_sample=True,gapper=True,mirror=True,absflag=False,inflection=False):
         self.S = CausticSurface()
         self.clus_ra = clus_ra
         self.clus_dec = clus_dec
@@ -160,10 +160,10 @@ class Caustic:
 
         if mirror == True:
             print 'Calculating Density w/Mirrored Data'
-            self.gaussian_kernel(np.append(self.data_set[:,0],self.data_set[:,0]),np.append(self.data_set[:,1],-self.data_set[:,1]),self.r200,normalization=H0,scale=q,xmax=xmax,ymax=ymax,xres=100)
+            self.gaussian_kernel2(np.append(self.data_set[:,0],self.data_set[:,0]),np.append(self.data_set[:,1],-self.data_set[:,1]),self.r200,normalization=H0,scale=q,xmax=xmax,ymax=ymax,xres=100)
         else:
             print 'Calculating Density'
-            self.gaussian_kernel(self.data_set[:,0],self.data_set[:,1],self.r200,normalization=H0,scale=q,xmax=xmax,ymax=ymax,xres=100)
+            self.gaussian_kernel2(self.data_set[:,0],self.data_set[:,1],self.r200,normalization=H0,scale=q,xmax=xmax,ymax=ymax,xres=100)
         self.img_tot = self.img/np.max(np.abs(self.img))
         self.img_grad_tot = self.img_grad/np.max(np.abs(self.img_grad))
         self.img_inf_tot = self.img_inf/np.max(np.abs(self.img_inf))
@@ -401,8 +401,30 @@ class Caustic:
         #print 'GALAXIES CUT =',str(origsize-datafinal[:,0].size)
         return datafinal
 
-    
-    def gaussian_kernel(self,xvalues,yvalues,r200,normalization=100,scale=50,xres=200,yres=220,xmax=6.0,ymax=5000.0,adj=20):
+    def gaussian_kernel2(self,xvalues,yvalues,r200,normalization=100.0,scale=10.0,xres=200,yres=220,xmax=6.0,ymax=5000.0,adj=20):
+        if np.max(xvalues) >= xmax:
+            raise Exception('Bounding Error: Please either increase your xmax value or trim your sample to be x < '+str(xmax))
+        if np.max(np.abs(yvalues)) >= ymax:
+            raise Exception('Bounding Error: Please either increase your ymax value or trim your sample to be y < '+str(ymax))
+
+        yvalues = yvalues/(normalization*scale)
+
+        self.x_range = np.arange(0,xmax,0.05)
+        self.x_range_bin = np.arange(0,xmax+0.05,0.05)
+        xres = self.x_range.size
+        self.y_range = np.arange(-ymax/(normalization*scale),ymax/(normalization*scale),0.05)*normalization*scale
+        self.y_range_bin = np.arange(-ymax/(normalization*scale),ymax/(normalization*scale)+0.05,0.05)*normalization*scale
+        yres = self.y_range.size
+        self.x_scale = (xvalues/xmax)*xres
+        self.y_scale = ((yvalues+ymax)/(ymax*2.0))*yres
+        self.ksize_x = (4.0/(3.0*xvalues.size))**(1/5.0)*np.std(self.x_scale[xvalues<r200])
+        self.imgr,xedge,yedge = np.histogram2d(xvalues,yvalues,bins=[self.x_range_bin,self.y_range_bin/(normalization*scale)])
+        self.img = ndi.gaussian_filter(self.imgr, (self.ksize_x,self.ksize_x),mode='reflect')
+        self.img_grad = ndi.gaussian_gradient_magnitude(self.imgr, (self.ksize_x,self.ksize_x))
+        self.img_inf = ndi.gaussian_gradient_magnitude(ndi.gaussian_gradient_magnitude(self.imgr, (self.ksize_x,self.ksize_x)), (self.ksize_x,self.ksize_x))
+        print xres,yres
+
+    def gaussian_kernel(self,xvalues,yvalues,r200,normalization=100,scale=10,xres=200,yres=220,xmax=6.0,ymax=5000.0,adj=20):
         """
         Uses a 2D gaussian kernel to estimate the density of the phase space.
         As of now, the maximum radius extends to 6Mpc and the maximum velocity allowed is 5000km/s
@@ -447,7 +469,7 @@ class Caustic:
         if np.max(np.abs(yvalues)) >= ymax:
             raise Exception('Bounding Error: Please either increase your ymax value or trim your sample to be y < '+str(ymax))
 
-        self.x_range = np.arange(0,xmax,0.03)
+        self.x_range = np.arange(0,xmax,0.05)
         xres = self.x_range.size
         self.y_range = np.arange(-ymax,ymax,2.0*ymax/(2*xres))
         yres = self.y_range.size
