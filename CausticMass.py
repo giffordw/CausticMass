@@ -160,10 +160,10 @@ class Caustic:
 
         if mirror == True:
             print 'Calculating Density w/Mirrored Data'
-            self.gaussian_kernel2(np.append(self.data_set[:,0],self.data_set[:,0]),np.append(self.data_set[:,1],-self.data_set[:,1]),self.r200,normalization=H0,scale=q,xmax=xmax,ymax=ymax,xres=100)
+            self.gaussian_kernel(np.append(self.data_set[:,0],self.data_set[:,0]),np.append(self.data_set[:,1],-self.data_set[:,1]),self.r200,normalization=H0,scale=q,xmax=xmax,ymax=ymax)
         else:
             print 'Calculating Density'
-            self.gaussian_kernel2(self.data_set[:,0],self.data_set[:,1],self.r200,normalization=H0,scale=q,xmax=xmax,ymax=ymax,xres=100)
+            self.gaussian_kernel(self.data_set[:,0],self.data_set[:,1],self.r200,normalization=H0,scale=q,xmax=xmax,ymax=ymax)
         self.img_tot = self.img/np.max(np.abs(self.img))
         self.img_grad_tot = self.img_grad/np.max(np.abs(self.img_grad))
         self.img_inf_tot = self.img_inf/np.max(np.abs(self.img_inf))
@@ -401,30 +401,7 @@ class Caustic:
         #print 'GALAXIES CUT =',str(origsize-datafinal[:,0].size)
         return datafinal
 
-    def gaussian_kernel2(self,xvalues,yvalues,r200,normalization=100.0,scale=10.0,xres=200,yres=220,xmax=6.0,ymax=5000.0,adj=20):
-        if np.max(xvalues) >= xmax:
-            raise Exception('Bounding Error: Please either increase your xmax value or trim your sample to be x < '+str(xmax))
-        if np.max(np.abs(yvalues)) >= ymax:
-            raise Exception('Bounding Error: Please either increase your ymax value or trim your sample to be y < '+str(ymax))
-
-        yvalues = yvalues/(normalization*scale)
-
-        self.x_range = np.arange(0,xmax,0.05)
-        self.x_range_bin = np.arange(0,xmax+0.05,0.05)
-        xres = self.x_range.size
-        self.y_range = np.arange(-ymax/(normalization*scale),ymax/(normalization*scale),0.05)*normalization*scale
-        self.y_range_bin = np.arange(-ymax/(normalization*scale),ymax/(normalization*scale)+0.05,0.05)*normalization*scale
-        yres = self.y_range.size
-        self.x_scale = (xvalues/xmax)*xres
-        self.y_scale = ((yvalues+ymax)/(ymax*2.0))*yres
-        self.ksize_x = (4.0/(3.0*xvalues.size))**(1/5.0)*np.std(self.x_scale[xvalues<r200])
-        self.imgr,xedge,yedge = np.histogram2d(xvalues,yvalues,bins=[self.x_range_bin,self.y_range_bin/(normalization*scale)])
-        self.img = ndi.gaussian_filter(self.imgr, (self.ksize_x,self.ksize_x),mode='reflect')
-        self.img_grad = ndi.gaussian_gradient_magnitude(self.imgr, (self.ksize_x,self.ksize_x))
-        self.img_inf = ndi.gaussian_gradient_magnitude(ndi.gaussian_gradient_magnitude(self.imgr, (self.ksize_x,self.ksize_x)), (self.ksize_x,self.ksize_x))
-        print xres,yres
-
-    def gaussian_kernel(self,xvalues,yvalues,r200,normalization=100,scale=10,xres=200,yres=220,xmax=6.0,ymax=5000.0,adj=20):
+    def gaussian_kernel(self,xvalues,yvalues,r200,normalization=100.0,scale=10.0,xres=200,yres=220,xmax=6.0,ymax=5000.0):
         """
         Uses a 2D gaussian kernel to estimate the density of the phase space.
         As of now, the maximum radius extends to 6Mpc and the maximum velocity allowed is 5000km/s
@@ -463,46 +440,26 @@ class Caustic:
         self.img_grad : first derivative of img
         self.img_inf : second derivative of img
         """
-
         if np.max(xvalues) >= xmax:
             raise Exception('Bounding Error: Please either increase your xmax value or trim your sample to be x < '+str(xmax))
         if np.max(np.abs(yvalues)) >= ymax:
             raise Exception('Bounding Error: Please either increase your ymax value or trim your sample to be y < '+str(ymax))
 
-        self.x_range = np.arange(0,xmax,0.05)
-        xres = self.x_range.size
-        self.y_range = np.arange(-ymax,ymax,2.0*ymax/(2*xres))
-        yres = self.y_range.size
-        grid_ratio = (((2.0*ymax)/yres)/normalization)/(xmax/xres)
-        print xres,yres
+        yvalues = yvalues/(normalization*scale)
 
+        self.x_range = np.arange(0,xmax,0.05)
+        self.x_range_bin = np.arange(0,xmax+0.05,0.05)
+        xres = self.x_range.size
+        self.y_range = np.arange(-ymax/(normalization*scale),ymax/(normalization*scale),0.05)*normalization*scale
+        self.y_range_bin = np.arange(-ymax/(normalization*scale),ymax/(normalization*scale)+0.05,0.05)*normalization*scale
+        yres = self.y_range.size
         self.x_scale = (xvalues/xmax)*xres
         self.y_scale = ((yvalues+ymax)/(ymax*2.0))*yres
-
-        self.imgr = np.zeros((xres,yres))
-        #self.x_range = np.linspace(0,xmax,xres+1)
-        #self.y_range = np.linspace(-ymax,ymax,yres+1)
-
-        for j in range(xvalues.size):
-            self.imgr[self.x_scale[j],self.y_scale[j]] += 1
-        
-        #Estimate kernel sizes
-        #Uniform
-        #self.ksize = 3.12/(xvalues.size)**(1/6.0)*((np.var(self.x_scale[xvalues<r200])+np.var(self.y_scale[xvalues<r200]))/2.0)**0.5/adj
-        #if self.ksize < 3.5:
-        #    self.ksize = 3.5
-        #Gaussian
         self.ksize_x = (4.0/(3.0*xvalues.size))**(1/5.0)*np.std(self.x_scale[xvalues<r200])
-        self.ksize_y = self.ksize_x*scale/grid_ratio
-        #self.ksize_y = (4.0/(3.0*yvalues.size))**(1/5.0)*np.std(self.y_scale[xvalues<r200])
-        
-        #smooth with estimated kernel sizes
-        #self.img = ndi.uniform_filter(self.imgr, (self.ksize,self.ksize))#,mode='reflect')
-        self.img = ndi.gaussian_filter(self.imgr, (self.ksize_x,self.ksize_y),mode='reflect')
-        self.img_grad = ndi.gaussian_gradient_magnitude(self.imgr, (self.ksize_x,self.ksize_y))
-        self.img_inf = ndi.gaussian_gradient_magnitude(ndi.gaussian_gradient_magnitude(self.imgr, (self.ksize_x,self.ksize_y)), (self.ksize_x,self.ksize_y))
-
-
+        self.imgr,xedge,yedge = np.histogram2d(xvalues,yvalues,bins=[self.x_range_bin,self.y_range_bin/(normalization*scale)])
+        self.img = ndi.gaussian_filter(self.imgr, (self.ksize_x,self.ksize_x),mode='reflect')
+        self.img_grad = ndi.gaussian_gradient_magnitude(self.imgr, (self.ksize_x,self.ksize_x))
+        self.img_inf = ndi.gaussian_gradient_magnitude(ndi.gaussian_gradient_magnitude(self.imgr, (self.ksize_x,self.ksize_x)), (self.ksize_x,self.ksize_x))
 
 
 class CausticSurface:
