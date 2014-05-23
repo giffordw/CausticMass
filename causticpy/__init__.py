@@ -245,6 +245,7 @@ class Caustic:
             self.r200_est_fbeta = self.Mass2.r200_est
             self.M200_est = self.Mass.M200_est
             self.M200_est_fbeta = self.Mass2.M200_est
+            self.M200_fbeta = self.Mass2.M200
 
             print 'r200 estimate: ',self.Mass2.r200_est
             print 'M200 estimate: ',self.Mass2.M200_est
