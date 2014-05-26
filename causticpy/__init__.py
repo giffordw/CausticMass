@@ -578,8 +578,12 @@ class CausticSurface:
         chi = np.array([])
         for nn in range(self.Ar_final_opt.shape[0]):
             fint = interp1d(ri[ri<r200],self.Ar_final_opt[nn])
-            Ar_comp = fint(mid_rbin[mid_rbin<r200])
-            chi = np.append(chi,np.sum((Ar_comp-avgmax[mid_rbin<r200])**2))
+            try:
+                Ar_comp = fint(mid_rbin[mid_rbin<r200])
+                chi = np.append(chi,np.sum((Ar_comp-avgmax[mid_rbin<r200])**2))
+            except ValueError: #sometimes I get an out of bounds error here. Not sure why since it should be in range
+                Ar_comp = fint(mid_rbin[mid_rbin<r200][:-1])
+                chi = np.append(chi,np.sum((Ar_comp-avgmax[mid_rbin<r200][:-1])**2))
         #pdb.set_trace()
         try:
             self.level_finalE = ((self.levels[np.isfinite(chi)])[np.where(chi[np.isfinite(chi)] == np.min(chi[np.isfinite(chi)]))])[0]
