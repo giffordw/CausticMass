@@ -558,8 +558,8 @@ class CausticSurface:
             self.Ar_finalD = np.zeros(ri.size)
 
         #Identify sharp phase-space edge
-        numbins = 10
-        perc_top = 0.05 #what percent of top velocity galaxies per/bin used to identify surface
+        numbins = 6
+        perc_top = 0.1 #what percent of top velocity galaxies per/bin used to identify surface
         numrval = (data[:,0][data[:,0]< r200]).size
         size_bin = int(np.ceil(numrval*1.0/numbins))
         rsort = data[:,0][np.argsort(data[:,0])]
