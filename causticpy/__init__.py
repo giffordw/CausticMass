@@ -172,7 +172,7 @@ class Caustic:
             #self.pre_vdisp = 9.15*self.Ngal_1mpc+350.32
             #print 'Pre_vdisp=',self.pre_vdisp
             #print 'Ngal<1Mpc=',self.Ngal_1mpc
-            v_cut = self.data_set[:,1][np.where((self.data_set[:,0]<self.r200) & (np.abs(self.data_set[:,1])<5000.0))]
+            v_cut = self.data_set[:,1][np.where((self.data_set[:,0]<self.r200) & (np.abs(self.data_set[:,1])<vlimit))]
             try:
                 self.pre_vdisp2 = astStats.biweightScale(v_cut[np.where(np.isfinite(v_cut))],9.0)
             except:
@@ -338,7 +338,7 @@ class Caustic:
 
     def shiftgapper(self,data):
         npbin = 25
-        gap_prev = 2000 #initialize gap size for initial comparison (must be larger to start).
+        gap_prev = 2000.0 #initialize gap size for initial comparison (must be larger to start).
         nbins = np.int(np.ceil(data[:,0].size/(npbin*1.0)))
         origsize = data[:,0].shape[0]
         data = data[np.argsort(data[:,0])] #sort by r to ready for binning
@@ -357,11 +357,11 @@ class Caustic:
                     f = (databinsort[:,1])[databinsort[:,1].size-np.int(np.ceil(databinsort[:,1].size/4.0))]-(databinsort[:,1])[np.int(np.ceil(databinsort[:,1].size/4.0))]
                     gap = f/(1.349)
                     #print '    GAP SIZE', str(gap)
-                    if gap < 500.0:
-                        gap = 500.0
-                    if gap >= 2.0*gap_prev: 
-                        gap = gap_prev
-                        #print '   Altered gap = %.3f'%(gap)
+                    if gap < 500.0: break
+                    #    gap = 500.0
+                    #if gap >= 2.0*gap_prev: 
+                    #    gap = gap_prev
+                    #    #print '   Altered gap = %.3f'%(gap)
                     databelow = databinsort[databinsort[:,1]<=0]
                     gapbelow =databelow[:,1][1:]-databelow[:,1][:-1]
                     dataabove = databinsort[databinsort[:,1]>0]
