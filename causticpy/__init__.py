@@ -229,6 +229,7 @@ class Caustic:
 
         self.caustic_profile = self.S.Ar_finalD
         self.caustic_fit = self.S.vesc_fit
+        self.caustic_edge = self.S.Ar_finalE
         self.gal_vdisp = self.S.gal_vdisp
         self.memflag = self.S.memflag
 
@@ -238,14 +239,18 @@ class Caustic:
             #self.Mass2 = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=0.65,H0=H0)
             self.Mass = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=None,H0=H0)
             self.Mass2 = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=0.65,H0=H0)
+            self.MassE = MassCalc(self.x_range,self.caustic_edge,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=0.65,H0=H0)
 
             self.mprof = self.Mass.massprofile
             self.mprof_fbeta = self.Mass2.massprofile
+            self.mprof_edge = self.MassE.edge
             self.r200_est = self.Mass.r200_est
             self.r200_est_fbeta = self.Mass2.r200_est
             self.M200_est = self.Mass.M200_est
             self.M200_est_fbeta = self.Mass2.M200_est
             self.M200_fbeta = self.Mass2.M200
+            self.M200_edge = self.MassE.M200
+            self.M200_edge_est = self.MassE.M200_est
 
             print 'r200 estimate: ',self.Mass2.r200_est
             print 'M200 estimate: ',self.Mass2.M200_est
