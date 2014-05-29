@@ -569,7 +569,7 @@ class CausticSurface:
         size_bin = int(np.ceil(numrval*1.0/numbins))
         rsort = data[:,0][np.argsort(data[:,0])]
         #need to correct this to also detect just positive or negative surfaces if mirroring is off.
-        #maybe calculate both and take minimum after
+        #maybe calculate both and take minimum after more tests
         if mirror == True:
             vsort = np.abs(data[:,1][np.argsort(data[:,0])])
         else:
