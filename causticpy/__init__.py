@@ -21,12 +21,12 @@ MassCalc:
 
 """
 import matplotlib
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 import numpy as np
 import cosmolopy.distance as cd
 from cosmolopy import magnitudes, fidcosmo
 from matplotlib.pyplot import *
-import astStats
+from astLib import astStats
 import scipy.ndimage as ndi
 from scipy.optimize import curve_fit
 from scipy.interpolate import interp1d
@@ -243,7 +243,7 @@ class Caustic:
 
             self.mprof = self.Mass.massprofile
             self.mprof_fbeta = self.Mass2.massprofile
-            self.mprof_edge = self.MassE.edge
+            self.mprof_edge = self.MassE.massprofile
             self.r200_est = self.Mass.r200_est
             self.r200_est_fbeta = self.Mass2.r200_est
             self.M200_est = self.Mass.M200_est
@@ -548,7 +548,7 @@ class CausticSurface:
         
         #optimization equation to search for minimum value
         self.skr = (self.vesc-4.0*self.vvar)**2
-        
+
         try:
             self.level_elem = np.where(self.skr == np.min(self.skr[np.isfinite(self.skr)]))[0][0]
             self.level_final = self.levels[self.level_elem]
@@ -568,26 +568,32 @@ class CausticSurface:
         numrval = (data[:,0][data[:,0]< r200]).size
         size_bin = int(np.ceil(numrval*1.0/numbins))
         rsort = data[:,0][np.argsort(data[:,0])]
-        #need to correct this to also detect just positive or negative surfaces if mirroring is off.
-        #maybe calculate both and take minimum after
         if mirror == True:
             vsort = np.abs(data[:,1][np.argsort(data[:,0])])
         else:
             vsort = data[:,1][np.argsort(data[:,0])]
         mid_rbin = np.array([])
         avgmax = np.array([])
+        avgmin = np.array([])
+        mincomp = np.array([])
         for nn in range(numbins):
             vbin = vsort[nn*size_bin:(nn+1)*size_bin]
             rbin = rsort[nn*size_bin:(nn+1)*size_bin]
-            vmax = (vbin[np.argsort(vbin)][::-1])[int(np.ceil(vbin.size*perc_top))]
-            avgmax = np.append(avgmax,np.average(vmax))
+            vemax = (vbin[np.argsort(vbin)][::-1])[:int(np.ceil(vbin[vbin>0.0].size*perc_top))]
+            vemin = (vbin[np.argsort(vbin)])[:int(np.ceil(vbin[vbin<0.0].size*perc_top))]
+            avgmax = np.append(avgmax,np.average(vemax))
+            avgmin = np.append(avgmin,np.average(vemin))
+            #take the minimum of either the above || below zero caustic
+            if avgmin[nn] >= 0: mincomp = np.append(mincomp,avgmax)
+            else: mincomp = np.append(mincomp,np.min([np.abs(avgmin),avgmax]))
+            #mincomp = np.append(mincomp,avgmin)
             mid_rbin = np.append(mid_rbin,np.median(rbin))
         chi = np.array([])
         for nn in range(self.Ar_final_opt.shape[0]):
             fint = interp1d(ri[ri<r200],self.Ar_final_opt[nn])
             #try:
             Ar_comp = fint(mid_rbin[mid_rbin<np.max(ri[ri<r200])])
-            chi = np.append(chi,np.sum((Ar_comp-avgmax[mid_rbin<np.max(ri[ri<r200])])**2))
+            chi = np.append(chi,np.sum((Ar_comp-mincomp[mid_rbin<np.max(ri[ri<r200])])**2))
             #except ValueError: #sometimes I get an out of bounds error here. Not sure why since it should be in range
             #    Ar_comp = fint(mid_rbin[mid_rbin<np.max(ri[ri<r200])][:-1])
             #    chi = np.append(chi,np.sum((Ar_comp-avgmax[mid_rbin<r200][:-1])**2))
