@@ -21,12 +21,12 @@ MassCalc:
 
 """
 import matplotlib
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 import numpy as np
 import cosmolopy.distance as cd
 from cosmolopy import magnitudes, fidcosmo
 from matplotlib.pyplot import *
-import astStats
+from astLib import astStats
 import scipy.ndimage as ndi
 from scipy.optimize import curve_fit
 from scipy.interpolate import interp1d
@@ -584,8 +584,8 @@ class CausticSurface:
             avgmax = np.append(avgmax,np.average(vemax))
             avgmin = np.append(avgmin,np.average(vemin))
             #take the minimum of either the above || below zero caustic
-            if avgmin[nn] >= 0: mincomp = np.append(mincomp,avgmax)
-            else: mincomp = np.append(mincomp,np.min([np.abs(avgmin),avgmax]))
+            if np.min(vbin) >= 0: mincomp = np.append(mincomp,avgmax) #if no negative velocities (aka, mirrored)
+            else: mincomp = np.append(mincomp,np.min([np.abs(avgmin),avgmax])) #else take the minimum extreme
             #mincomp = np.append(mincomp,avgmin)
             mid_rbin = np.append(mid_rbin,np.median(rbin))
         chi = np.array([])
