@@ -21,7 +21,7 @@ MassCalc:
 
 """
 import matplotlib
-#matplotlib.use('Agg')
+matplotlib.use('Agg')
 import numpy as np
 import cosmolopy.distance as cd
 from cosmolopy import magnitudes, fidcosmo
@@ -578,14 +578,16 @@ class CausticSurface:
         mincomp = np.array([])
         for nn in range(numbins):
             vbin = vsort[nn*size_bin:(nn+1)*size_bin]
+            if vbin.size==0:
+                if nn >= 4: break
             rbin = rsort[nn*size_bin:(nn+1)*size_bin]
             vemax = (vbin[np.argsort(vbin)][::-1])[:int(np.ceil(vbin[vbin>0.0].size*perc_top))]
             vemin = (vbin[np.argsort(vbin)])[:int(np.ceil(vbin[vbin<0.0].size*perc_top))]
             avgmax = np.append(avgmax,np.average(vemax))
             avgmin = np.append(avgmin,np.average(vemin))
             #take the minimum of either the above || below zero caustic
-            if np.min(vbin) >= 0: mincomp = np.append(mincomp,avgmax) #if no negative velocities (aka, mirrored)
-            else: mincomp = np.append(mincomp,np.min([np.abs(avgmin),avgmax])) #else take the minimum extreme
+            if np.min(vbin) >= 0: mincomp = np.append(mincomp,avgmax[nn]) #if no negative velocities (aka, mirrored)
+            else: mincomp = np.append(mincomp,np.min([np.abs(avgmin[nn]),avgmax[nn]])) #else take the minimum extreme
             #mincomp = np.append(mincomp,avgmin)
             mid_rbin = np.append(mid_rbin,np.median(rbin))
         chi = np.array([])
