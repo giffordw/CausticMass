@@ -56,7 +56,7 @@ class Caustic:
     def __init__(self):
         pass
     
-    def run_caustic(self,data,gal_mags=None,gal_memberflag=None,clus_ra=None,clus_dec=None,clus_z=None,gal_r=None,gal_v=None,r200=None,clus_vdisp=None,rlimit=4.0,vlimit=3500,q=10.0,H0=100.0,xmax=6.0,ymax=5000.0,cut_sample=True,gapper=True,mirror=True,absflag=False,inflection=False):
+    def run_caustic(self,data,gal_mags=None,gal_memberflag=None,clus_ra=None,clus_dec=None,clus_z=None,gal_r=None,gal_v=None,r200=None,clus_vdisp=None,rlimit=4.0,vlimit=3500,q=10.0,H0=100.0,xmax=6.0,ymax=5000.0,cut_sample=True,gapper=True,mirror=True,absflag=False,inflection=False,edge_perc=0.1):
         self.S = CausticSurface()
         self.clus_ra = clus_ra
         self.clus_dec = clus_dec
@@ -218,9 +218,9 @@ class Caustic:
         print 'Calculating initial surface'
         if inflection == False:
             if gal_memberflag is None:
-                self.S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None,mirror=mirror)
+                self.S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None,mirror=mirror,edge_perc=edge_perc)
             else:
-                self.S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.data_set[:,-1],r200=self.r200,mirror=mirror)
+                self.S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.data_set[:,-1],r200=self.r200,mirror=mirror,edge_perc=edge_perc)
         else:
             if gal_memberflag is None:
                 self.S.findsurface_inf(self.data_set,self.x_range,self.y_range,self.img_tot,self.img_inf,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None)
@@ -499,7 +499,7 @@ class CausticSurface:
     def __init__(self):
         pass
     
-    def findsurface(self,data,ri,vi,Zi,memberflags=None,r200=2.0,maxv=5000.0,halo_scale_radius=None,halo_scale_radius_e=0.01,halo_vdisp=None,bin=None,plotphase=True,beta=None,mirror=True):
+    def findsurface(self,data,ri,vi,Zi,memberflags=None,r200=2.0,maxv=5000.0,halo_scale_radius=None,halo_scale_radius_e=0.01,halo_vdisp=None,bin=None,plotphase=True,beta=None,mirror=True,edge_perc=0.1):
         kappaguess = np.max(Zi) #first guess at the level
         #self.levels = np.linspace(0.00001,kappaguess,100)[::-1] #create levels (kappas) to try out
         self.levels = 10**(np.linspace(np.log10(np.min(Zi[Zi>0]/5.0)),np.log10(kappaguess),200)[::-1]) 
@@ -564,7 +564,7 @@ class CausticSurface:
 
         #Identify sharp phase-space edge
         numbins = 6
-        perc_top = 0.1 #what percent of top velocity galaxies per/bin used to identify surface
+        perc_top = edge_perc #what percent of top velocity galaxies per/bin used to identify surface
         numrval = (data[:,0][data[:,0]< r200]).size
         size_bin = int(np.ceil(numrval*1.0/numbins))
         rsort = data[:,0][np.argsort(data[:,0])]
