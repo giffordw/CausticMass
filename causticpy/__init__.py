@@ -1025,7 +1025,7 @@ class MassCalc:
         A2 = A[ri>=0]
         kmMpc = 3.08568025e19
         sumtot = np.zeros(A2.size)
-        print 'Using beta = %.2f'%(beta)
+        #print 'Using beta = %.2f'%(beta)
         if conc1 == None:
             #self.conc = 4.0*(vdisp/700.0)**(-0.306)
             self.conc = 5.0 + np.random.normal(0,2.0)
@@ -1043,7 +1043,7 @@ class MassCalc:
                 #sum[i] = np.trapz((A2[:i+1]*1000)**2,(r2[:i+1])*kmMpc*1000)
             #sum = integrate.cumtrapz(self.f_beta*(A2[:f_beta.size]*1000)**2,r2[:f_beta.size]*kmMpc*1000,initial=0.0)
         else:
-            if type(fbr) == float or type(fbr) == int:
+            if type(fbr) == float or type(fbr) == int or type(fbr) == np.float64:
                 self.f_beta = np.zeros(A2.size)+fbr*1.0
             else:
                 self.f_beta = fbr
