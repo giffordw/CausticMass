@@ -56,11 +56,12 @@ class Caustic:
     def __init__(self):
         pass
     
-    def run_caustic(self,data,gal_mags=None,gal_memberflag=None,clus_ra=None,clus_dec=None,clus_z=None,gal_r=None,gal_v=None,r200=None,clus_vdisp=None,rlimit=4.0,vlimit=3500,q=10.0,H0=100.0,xmax=6.0,ymax=5000.0,cut_sample=True,gapper=True,mirror=True,absflag=False,inflection=False,edge_perc=0.1):
+    def run_caustic(self,data,gal_mags=None,gal_memberflag=None,clus_ra=None,clus_dec=None,clus_z=None,gal_r=None,gal_v=None,r200=None,clus_vdisp=None,rlimit=4.0,vlimit=3500,q=10.0,H0=100.0,xmax=6.0,ymax=5000.0,cut_sample=True,gapper=True,mirror=True,absflag=False,inflection=False,edge_perc=0.1,fbr=0.65):
         self.S = CausticSurface()
         self.clus_ra = clus_ra
         self.clus_dec = clus_dec
         self.clus_z = clus_z
+        self.fbr=fbr
         if gal_r == None:
             if self.clus_ra == None:
                 #calculate average ra from galaxies
@@ -238,8 +239,8 @@ class Caustic:
             #self.Mass = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=None,H0=H0)
             #self.Mass2 = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=0.65,H0=H0)
             self.Mass = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=None,H0=H0)
-            self.Mass2 = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=0.65,H0=H0)
-            self.MassE = MassCalc(self.x_range,self.caustic_edge,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=0.65,H0=H0)
+            self.Mass2 = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=fbr,H0=H0)
+            self.MassE = MassCalc(self.x_range,self.caustic_edge,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=fbr,H0=H0)
 
             self.mprof = self.Mass.massprofile
             self.mprof_fbeta = self.Mass2.massprofile
@@ -361,9 +362,9 @@ class Caustic:
                     databinsort = databin[np.argsort(databin[:,1])] #sort by v
                     f = (databinsort[:,1])[databinsort[:,1].size-np.int(np.ceil(databinsort[:,1].size/4.0))]-(databinsort[:,1])[np.int(np.ceil(databinsort[:,1].size/4.0))]
                     gap = f/(1.349)
-                    #print '    GAP SIZE', str(gap)
+                    #print i,'    GAP SIZE', str(gap)
                     if gap < 500.0: break
-                    #    gap = 500.0
+                        #gap = 500.0
                     #if gap >= 2.0*gap_prev: 
                     #    gap = gap_prev
                     #    #print '   Altered gap = %.3f'%(gap)
@@ -426,7 +427,7 @@ class Caustic:
 
         normalization = 100 : This is equivalent to H0. Default is H0=100
 
-        scale = 50 : "q" parameter in Diaferio 99. Literature says this can be between 10-50
+        scale = 10 : "q" parameter in Diaferio 99. Literature says this can be between 10-50
 
         xres = 200 : x-grid resolution
 
@@ -1052,7 +1053,7 @@ class MassCalc:
                 sumtot[i] = np.trapz(self.f_beta[1:i+1]*(A2[1:i+1]*1000)**2,(r2[1:i+1])*kmMpc*1000)
                 #sum[i] = np.trapz((A2[:i+1]*1000)**2,(r2[:i+1])*kmMpc*1000)
             #sum = integrate.cumtrapz(self.f_beta*(A2[:f_beta.size]*1000)**2,r2[:f_beta.size]*kmMpc*1000,initial=0.0)
-        self.massprofile = sumtot/(H0/100.0*G*solmass)
+        self.massprofile = sumtot/(G*solmass*H0/100.0)
         
         #return the caustic r200
         self.avg_density = self.massprofile/(4.0/3.0*np.pi*(ri[:self.f_beta.size])**3.0)
