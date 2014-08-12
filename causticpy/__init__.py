@@ -79,7 +79,11 @@ class Caustic:
             
             #calculate angular diameter distance. 
             #Variable self.ang_d
-            self.ang_d,self.lum_d = self.zdistance(self.clus_z,H0) 
+            self.ang_d,self.lum_d = self.zdistance(self.clus_z,H0)
+
+            #calculate H(z)
+            self.Hz = H0*np.sqrt(0.25*(1+self.clus_z)**3 + 0.75)
+            self.hz = self.Hz / 100.0  #little h(z)
             
             #calculate the spherical angles of galaxies from cluster center.
             #Variable self.angle
@@ -161,10 +165,10 @@ class Caustic:
 
         if mirror == True:
             print 'Calculating Density w/Mirrored Data'
-            self.gaussian_kernel(np.append(self.data_set[:,0],self.data_set[:,0]),np.append(self.data_set[:,1],-self.data_set[:,1]),self.r200,normalization=H0,scale=q,xmax=xmax,ymax=ymax)
+            self.gaussian_kernel(np.append(self.data_set[:,0],self.data_set[:,0]),np.append(self.data_set[:,1],-self.data_set[:,1]),self.r200,normalization=self.Hz,scale=q,xmax=xmax,ymax=ymax)
         else:
             print 'Calculating Density'
-            self.gaussian_kernel(self.data_set[:,0],self.data_set[:,1],self.r200,normalization=H0,scale=q,xmax=xmax,ymax=ymax)
+            self.gaussian_kernel(self.data_set[:,0],self.data_set[:,1],self.r200,normalization=self.Hz,scale=q,xmax=xmax,ymax=ymax)
         self.img_tot = self.img/np.max(np.abs(self.img))
         self.img_grad_tot = self.img_grad/np.max(np.abs(self.img_grad))
         self.img_inf_tot = self.img_inf/np.max(np.abs(self.img_inf))
