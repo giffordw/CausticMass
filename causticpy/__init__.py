@@ -19,6 +19,7 @@ MassCalc:
     attributes: self.crit, self.g_b, self.conc, self.f_beta, self.massprofile, self.avg_density, self.r200_est,
                 self.M200
 
+https://github.com/giffordw/CausticMass
 """
 import matplotlib
 matplotlib.use('Agg')
