@@ -315,7 +315,7 @@ class Caustic:
         Finds the angular diameter distance for an array of cluster center redshifts.
         Instead, use angular distance file precalculated and upload.
         """
-        cosmo = {'omega_M_0':0.3,'omega_lambda_0':0.7,'h':H0/100.0}
+        cosmo = {'omega_M_0':0.25,'omega_lambda_0':0.75,'h':H0/100.0}
         cosmo = cd.set_omega_k_0(cosmo)
         ang_d = cd.angular_diameter_distance(clus_z,**cosmo)
         lum_d = cd.luminosity_distance(clus_z,**cosmo)
@@ -463,6 +463,7 @@ class Caustic:
         self.x_scale = (xvalues/xmax)*xres
         self.y_scale = ((yvalues+ymax)/(ymax*2.0))*yres
         self.ksize_x = (4.0/(3.0*xvalues.size))**(1/5.0)*np.std(self.x_scale[xvalues<r200])
+        self.ksize_x *= 1.0
         self.imgr,xedge,yedge = np.histogram2d(xvalues,yvalues,bins=[self.x_range_bin,self.y_range_bin/(normalization*scale)])
         self.img = ndi.gaussian_filter(self.imgr, (self.ksize_x,self.ksize_x),mode='reflect')
         self.img_grad = ndi.gaussian_gradient_magnitude(self.imgr, (self.ksize_x,self.ksize_x))
@@ -621,8 +622,8 @@ class CausticSurface:
         #self.NFWfit(ri[fitting_radii],self.Ar_finalD[fitting_radii],self.halo_scale_radius,ri,self.gb)
 
         if plotphase == True:
-            s =figure()
-            ax = s.add_subplot(111)
+            s,ax = subplots(1,figsize=(10,7))
+            ax.pcolormesh(ri,vi,Zi.T)
             ax.plot(data[:,0],data[:,1],'k.',markersize=0.5,alpha=0.8)
             for t in range(self.Ar_final_opt.shape[0]):
                 ax.plot(ri[:self.Ar_final_opt[t].size],self.Ar_final_opt[t],c='0.4',alpha=0.5)
@@ -1020,7 +1021,7 @@ class MassCalc:
         "Calculate the mass profile"
         G = 6.67E-11
         solmass = 1.98892e30
-        self.crit = 2.774946e11*(H0/100.0)**2.0*(0.25*(1+clus_z)**3.0 + 0.75)
+        self.crit = 2.7745946e11*(H0/100.0)**2.0*(0.25*(1+clus_z)**3.0 + 0.75)
         r2 = ri[ri>=0]
         A2 = A[ri>=0]
         kmMpc = 3.08568025e19
@@ -1053,7 +1054,7 @@ class MassCalc:
                 sumtot[i] = np.trapz(self.f_beta[1:i+1]*(A2[1:i+1]*1000)**2,(r2[1:i+1])*kmMpc*1000)
                 #sum[i] = np.trapz((A2[:i+1]*1000)**2,(r2[:i+1])*kmMpc*1000)
             #sum = integrate.cumtrapz(self.f_beta*(A2[:f_beta.size]*1000)**2,r2[:f_beta.size]*kmMpc*1000,initial=0.0)
-        self.massprofile = sumtot/(G*solmass*H0/100.0)
+        self.massprofile = sumtot/(G*solmass)
         
         #return the caustic r200
         self.avg_density = self.massprofile/(4.0/3.0*np.pi*(ri[:self.f_beta.size])**3.0)
