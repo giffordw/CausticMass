@@ -466,13 +466,15 @@ class Caustic:
         self.y_range_bin = np.arange(-ymax/(normalization*scale),ymax/(normalization*scale)+0.05,0.05)*normalization*scale
         yres = self.y_range.size
         self.x_scale = (xvalues/xmax)*xres
-        self.y_scale = ((yvalues+ymax)/(ymax*2.0))*yres
-        self.ksize_x = (4.0/(3.0*xvalues.size))**(1/5.0)*np.std(self.x_scale[xvalues<r200])
-        self.ksize_x *= 2.0
+        self.y_scale = ((yvalues*(normalization*scale)+ymax)/(ymax*2.0))*self.y_range.size
+        #self.ksize_x = (4.0/(3.0*xvalues.size))**(1/5.0)*np.std(self.x_scale[xvalues<r200])
+        self.ksize_x =  (4.0/(3.0*xvalues.size))**(1/5.0)*np.sqrt((np.var(self.x_scale[xvalues<r200]) + np.var(self.y_scale[xvalues<r200]))/2.0)
+        self.ksize_x *= 1.0
+        self.ksize_y = self.ksize_x#(4.0/(3.0*xvalues.size))**(1/5.0)*np.std(self.y_scale[xvalues<r200])
         self.imgr,xedge,yedge = np.histogram2d(xvalues,yvalues,bins=[self.x_range_bin,self.y_range_bin/(normalization*scale)])
-        self.img = ndi.gaussian_filter(self.imgr, (self.ksize_x,self.ksize_x),mode='reflect')
-        self.img_grad = ndi.gaussian_gradient_magnitude(self.imgr, (self.ksize_x,self.ksize_x))
-        self.img_inf = ndi.gaussian_gradient_magnitude(ndi.gaussian_gradient_magnitude(self.imgr, (self.ksize_x,self.ksize_x)), (self.ksize_x,self.ksize_x))
+        self.img = ndi.gaussian_filter(self.imgr, (self.ksize_x,self.ksize_y),mode='reflect')
+        self.img_grad = ndi.gaussian_gradient_magnitude(self.imgr, (self.ksize_x,self.ksize_y))
+        self.img_inf = ndi.gaussian_gradient_magnitude(ndi.gaussian_gradient_magnitude(self.imgr, (self.ksize_x,self.ksize_y)), (self.ksize_x,self.ksize_y))
 
 
 class CausticSurface:
