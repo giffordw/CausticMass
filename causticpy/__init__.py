@@ -82,10 +82,6 @@ class Caustic:
             #Variable self.ang_d
             self.ang_d,self.lum_d = self.zdistance(self.clus_z,H0)
 
-            #calculate H(z)
-            self.Hz = H0*np.sqrt(0.25*(1+self.clus_z)**3 + 0.75)
-            self.hz = self.Hz / 100.0  #little h(z)
-            
             #calculate the spherical angles of galaxies from cluster center.
             #Variable self.angle
             self.angle = self.findangle(data_spec[:,0],data_spec[:,1],self.clus_ra,self.clus_dec)
@@ -97,6 +93,10 @@ class Caustic:
             data_spec = data[np.where(np.isfinite(gal_v))]
             self.r = gal_r
             self.v = gal_v
+
+        #calculate H(z)
+        self.Hz = H0*np.sqrt(0.25*(1+self.clus_z)**3 + 0.75)
+        self.hz = self.Hz / 100.0  #little h(z)
 
         
         #package galaxy data, USE ASTROPY TABLE HERE!!!!!
