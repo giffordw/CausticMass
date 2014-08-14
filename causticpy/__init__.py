@@ -31,6 +31,7 @@ import astStats
 import scipy.ndimage as ndi
 from scipy.optimize import curve_fit
 from scipy.interpolate import interp1d
+from skimage import measure
 import pdb
 import warnings
 
@@ -224,14 +225,14 @@ class Caustic:
         print 'Calculating initial surface'
         if inflection == False:
             if gal_memberflag is None:
-                self.S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None,mirror=mirror,edge_perc=edge_perc)
+                self.S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None,mirror=mirror,edge_perc=edge_perc,Hz=self.Hz)
             else:
-                self.S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.data_set[:,-1],r200=self.r200,mirror=mirror,edge_perc=edge_perc)
+                self.S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.data_set[:,-1],r200=self.r200,mirror=mirror,edge_perc=edge_perc,Hz=self.Hz)
         else:
             if gal_memberflag is None:
-                self.S.findsurface_inf(self.data_set,self.x_range,self.y_range,self.img_tot,self.img_inf,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None)
+                self.S.findsurface_inf(self.data_set,self.x_range,self.y_range,self.img_tot,self.img_inf,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None,Hz=self.Hz)
             else:
-                self.S.findsurface_inf(self.data_set,self.x_range,self.y_range,self.img_tot,self.img_inf,memberflags=self.data_set[:,-1],r200=self.r200)
+                self.S.findsurface_inf(self.data_set,self.x_range,self.y_range,self.img_tot,self.img_inf,memberflags=self.data_set[:,-1],r200=self.r200,Hz=self.Hz)
 
         self.caustic_profile = self.S.Ar_finalD
         self.caustic_fit = self.S.vesc_fit
@@ -508,7 +509,7 @@ class CausticSurface:
     def __init__(self):
         pass
     
-    def findsurface(self,data,ri,vi,Zi,memberflags=None,r200=2.0,maxv=5000.0,halo_scale_radius=None,halo_scale_radius_e=0.01,halo_vdisp=None,bin=None,plotphase=True,beta=None,mirror=True,edge_perc=0.1):
+    def findsurface(self,data,ri,vi,Zi,memberflags=None,r200=2.0,maxv=5000.0,halo_scale_radius=None,halo_scale_radius_e=0.01,halo_vdisp=None,bin=None,plotphase=True,beta=None,mirror=True,q=10.0,Hz = 100.0,edge_perc=0.1):
         kappaguess = np.max(Zi) #first guess at the level
         #self.levels = np.linspace(0.00001,kappaguess,100)[::-1] #create levels (kappas) to try out
         self.levels = 10**(np.linspace(np.log10(np.min(Zi[Zi>0]/5.0)),np.log10(kappaguess),200)[::-1]) 
@@ -546,6 +547,9 @@ class CausticSurface:
             except:
                 self.gal_vdisp = np.std(data[:,1][np.where((data[:,0]<r200) & (np.abs(data[:,1])<maxv))],ddof=1)
             self.vvar = self.gal_vdisp**2
+
+        #find contours (new)
+        final_contour = self.findcontours(Zi,self.levels,ri,vi,r200,self.vvar,Hz,q)
         
         #initilize arrays
         self.vesc = np.zeros(self.levels.size)
@@ -630,19 +634,21 @@ class CausticSurface:
 
         if plotphase == True:
             s,ax = subplots(1,figsize=(10,7))
-            ax.pcolormesh(ri,vi,Zi.T)
+            #ax.pcolormesh(ri,vi,Zi.T)
             ax.plot(data[:,0],data[:,1],'k.',markersize=0.5,alpha=0.8)
             for t in range(self.Ar_final_opt.shape[0]):
                 ax.plot(ri[:self.Ar_final_opt[t].size],self.Ar_final_opt[t],c='0.4',alpha=0.5)
                 ax.plot(ri[:self.Ar_final_opt[t].size],-self.Ar_final_opt[t],c='0.4',alpha=0.5)
             ax.plot(ri,self.Ar_finalD,c='blue')
             ax.plot(ri,-self.Ar_finalD,c='blue')
+            ax.plot(ri,final_contour,c='green')
             ax.plot(mid_rbin,avgmax,c='r')
             ax.axhline(np.sqrt(4*self.vvar),c='black',ls='..')
             ax.axhline(np.sqrt(self.vesc[self.level_elem]),c='green',ls='--')
             ax.set_ylim(0,5000)
             s.savefig('plotphase.png')
-            close()
+            #close()
+            show()
 
         ##Output galaxy membership
         kpc2km = 3.09e16
@@ -999,6 +1005,74 @@ class CausticSurface:
         except:
             self.halo_scale_density_e = 1e14
         self.vesc_fit = np.sqrt(2*4*np.pi*4.5e-48*self.halo_scale_density*(halo_srad)**2*np.log(1+ri_full/halo_srad)/(ri_full/halo_srad))*3.08e19/np.sqrt(g_b)
+
+    def findcontours(self,Zi,levels,ri,vi,r200,vvar,Hz=100.0,q=10):
+        '''This function will use skimage find_contours() to locate escape surfaces'''
+        self.contours = [] #initialize contour array
+        rspace = ri[1] - ri[0] #find r spacing
+        for i,level in enumerate(levels):
+            fcontours = measure.find_contours(Zi, level)
+            
+            for j,contour in enumerate(fcontours): #sometimes 1 level has more than one contour
+                #rescale x & y
+                xcont = contour[:, 0]*rspace
+                ycont = (contour[:, 1]-vi.size/2.0 - 1)*Hz*q*rspace
+                
+                #only consider contours that are "full" and don't loop back only in positive or negative space
+                if np.max(xcont) >= 1.0 and np.min(xcont) <=0.05 and np.max(ycont) > 0 and np.min(ycont) < 0:
+                    xcont_u, ycont_u = xcont[ycont > 0],ycont[ycont > 0] #find positive/negative contours
+                    xcont_d, ycont_d = xcont[ycont < 0],ycont[ycont < 0]
+                    y_u = np.zeros(ri.size) #initialize positive, negative, and final arrays
+                    y_d = np.zeros(ri.size)
+                    y_f = np.zeros(ri.size)
+                    
+                    for k,xplace in enumerate(ri): #loop over r grid values
+                        #match contour grid to r grid (nearest neighbor interpolate)
+                        try: y_u[k] = ycont_u[np.where((xcont_u>xplace-0.01)&(xcont_u<xplace+0.01))].max()
+                        except: y_u[k] = 0.0
+
+                        try: y_d[k] = ycont_d[np.where((xcont_d>xplace-0.01)&(xcont_d<xplace+0.01))].max()
+                        except: y_d[k] = 0.0
+                        
+                        #apply gradient restriction for positive and negative cases.
+                        if k != 0:
+                            y_u[k] = self.restrict_gradient2(np.abs(y_u[k-1]),np.abs(y_u[k]),ri[k-1],ri[k])
+                            y_d[k] = self.restrict_gradient2(np.abs(y_d[k-1]),np.abs(y_d[k]),ri[k-1],ri[k])
+
+                        y_f[k] = np.min([y_u[k],np.abs(y_d[k])]) #take minimum value of positive and negative arrays
+                    self.contours.append(y_f)
+
+        #now I need to do the average calculation in Diaferio 99
+        #because an integral is involved, I don't want to do this for all contours.
+        #instead I select the 25% around the preliminary closest average and do
+        #the full calculation for them
+        avg_contours = np.average(np.array(self.contours).T[ri <= r200]**2.0,axis=1) #prelim avg
+        avg_cont_diff = (avg_contours - 4.0*vvar)**2.0 #prelim diff calc
+        i_sort = np.argsort(avg_cont_diff) #sort indices based on prelim diff
+        i_sort_small = i_sort[:np.int(i_sort.size/4.0)]
+        tot_avg = np.zeros(i_sort_small.size)
+        for i,isrt in enumerate(i_sort_small):
+            Ar = self.contours[isrt]
+            lessr200 = np.where(ri <= r200)
+            useri = ri[lessr200]
+            Ar = Ar[lessr200]
+            phir = np.zeros(useri.size)
+            for j in range(useri.size):
+                philimit = np.abs(Ar[j]) #phi integral limits
+                phir[j] = self.findphir(Zi[j][np.where((vi<philimit) & (vi>-philimit))],vi[np.where((vi<philimit) & (vi>-philimit))])
+            tot_avg[i] = np.trapz(Ar**2*phir,useri)/np.trapz(phir,useri)
+            plot(ri,self.contours[isrt],'k',alpha=0.6)
+            axhline(avg_contours[isrt])
+        final_contour = self.contours[i_sort_small[((tot_avg - 4.0*vvar)**2.0).argmin()]]
+        axhline(4.0*vvar,color='k',lw=2)
+        plot(ri,final_contour,'r')
+        show()
+        print 'complete'
+        return final_contour
+        
+
+
+        
 
 
 
