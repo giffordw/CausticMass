@@ -1045,8 +1045,6 @@ class CausticSurface:
         i_sort = np.argsort(avg_cont_diff) #sort indices based on prelim diff
         i_sort_small = i_sort[:np.int(i_sort.size/4.0)]
         tot_avg = np.zeros(i_sort_small.size)
-        print 'bar:',4.0*vvar
-        print 'avg_cont:',avg_contours[i_sort_small]
         for i,isrt in enumerate(i_sort_small):
             Ar = self.contours[isrt]
             lessr200 = np.where(ri <= r200)
@@ -1055,12 +1053,9 @@ class CausticSurface:
             phir = np.zeros(useri.size)
             for j in range(useri.size):
                 philimit = np.abs(Ar[j]) #phi integral limits
-                #phir[j] = self.findphir(Zi[j][np.where((vi<philimit) & (vi>-philimit))],vi[np.where((vi<philimit) & (vi>-philimit))])
-                phir[j] = np.sum(Zi[j][np.where((vi<philimit) & (vi>-philimit))])
+                phir[j] = self.findphir(Zi[j][np.where((vi<philimit) & (vi>-philimit))],vi[np.where((vi<philimit) & (vi>-philimit))])
             print np.trapz(phir,useri)
-            #tot_avg[i] = np.trapz(Ar**2*phir,useri)/np.trapz(phir,useri)
-            tot_avg[i] = np.sum(Ar**2 * phir)/np.sum(phir)
-        print 'final avg:',tot_avg
+            tot_avg[i] = np.trapz(Ar**2*phir,useri)/np.trapz(phir,useri)
         final_contour = self.contours[i_sort_small[((tot_avg - 4.0*vvar)**2.0).argmin()]]
         print 'complete'
         return final_contour
