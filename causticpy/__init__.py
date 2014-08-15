@@ -235,8 +235,8 @@ class Caustic:
                 self.S.findsurface_inf(self.data_set,self.x_range,self.y_range,self.img_tot,self.img_inf,memberflags=self.data_set[:,-1],r200=self.r200,Hz=self.Hz)
 
         self.caustic_profile = self.S.Ar_finalD
-        self.caustic_fit = self.S.vesc_fit
-        self.caustic_edge = self.S.Ar_finalE
+        #self.caustic_fit = self.S.vesc_fit
+        #self.caustic_edge = self.S.Ar_finalE
         self.gal_vdisp = self.S.gal_vdisp
         self.memflag = self.S.memflag
 
@@ -246,25 +246,25 @@ class Caustic:
             #self.Mass2 = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=0.65,H0=H0)
             self.Mass = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=None,H0=H0)
             self.Mass2 = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=fbr,H0=H0)
-            self.MassE = MassCalc(self.x_range,self.caustic_edge,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=fbr,H0=H0)
+            #self.MassE = MassCalc(self.x_range,self.caustic_edge,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=fbr,H0=H0)
 
             self.mprof = self.Mass.massprofile
             self.mprof_fbeta = self.Mass2.massprofile
-            self.mprof_edge = self.MassE.massprofile
+            #self.mprof_edge = self.MassE.massprofile
             self.r200_est = self.Mass.r200_est
             self.r200_est_fbeta = self.Mass2.r200_est
             self.M200_est = self.Mass.M200_est
             self.M200_est_fbeta = self.Mass2.M200_est
             self.M200_fbeta = self.Mass2.M200
-            self.M200_edge = self.MassE.M200
-            self.M200_edge_est = self.MassE.M200_est
+            #self.M200_edge = self.MassE.M200
+            #self.M200_edge_est = self.MassE.M200_est
 
             print 'r200 estimate: ',self.Mass2.r200_est
             print 'M200 estimate: ',self.Mass2.M200_est
-
+            
             self.Ngal = self.data_set[np.where((self.memflag==1)&(self.data_set[:,0]<=self.r200_est_fbeta))].shape[0]
-
-            #calculate velocity dispersion
+        
+        #calculate velocity dispersion
         try:
             self.vdisp_gal = stats.biweightScale(self.data_set[:,1][self.memflag==1],9.0)
         except:
@@ -273,6 +273,7 @@ class Caustic:
             except:
                 self.vdisp_gal = 0.0
         return 1
+        
         '''
         self.err = 0
         for k in range(4):
@@ -302,7 +303,7 @@ class Caustic:
                 print 'M200 estimate: ',Mass.M200_est
                 self.err = 1
                 break
-
+        
             #calculate velocity dispersion
         try:
             self.vdisp_gal = astStats.biweightScale(self.data_set[:,1][self.memflag==1],9.0)
@@ -547,7 +548,7 @@ class CausticSurface:
             except:
                 self.gal_vdisp = np.std(data[:,1][np.where((data[:,0]<r200) & (np.abs(data[:,1])<maxv))],ddof=1)
             self.vvar = self.gal_vdisp**2
-
+        '''
         #initilize arrays
         self.vesc = np.zeros(self.levels.size)
         self.Ar_final_opt = np.zeros((self.levels.size,ri[np.where((ri<r200) & (ri>=0))].size))
@@ -571,7 +572,11 @@ class CausticSurface:
         #This exception occurs if self.skr is entirely NAN. A flag should be raised for this in the output table
         except ValueError:
             self.Ar_finalD = np.zeros(ri.size)
-        
+        '''
+
+        #find contours (new)
+        self.Ar_finalD = self.findcontours(Zi,self.levels,ri,vi,r200,self.vvar,Hz,q)
+        '''
         #Identify sharp phase-space edge
         numbins = 6
         perc_top = edge_perc #what percent of top velocity galaxies per/bin used to identify surface
@@ -601,8 +606,8 @@ class CausticSurface:
             #mincomp = np.append(mincomp,avgmin)
             mid_rbin = np.append(mid_rbin,np.median(rbin))
         chi = np.array([])
-        for nn in range(self.Ar_final_opt.shape[0]):
-            fint = interp1d(ri[ri<r200],self.Ar_final_opt[nn])
+        for nn in range(self.contours.shape[0]):
+            fint = interp1d(ri[ri<r200],self.contours.T[ri<r200].T[nn])
             #try:
             Ar_comp = fint(mid_rbin[mid_rbin<np.max(ri[ri<r200])])
             chi = np.append(chi,np.sum((Ar_comp-mincomp[mid_rbin<np.max(ri[ri<r200])])**2))
@@ -619,12 +624,7 @@ class CausticSurface:
                     self.Ar_finalE[k] = self.restrict_gradient2(np.abs(self.Ar_finalE[k-1]),np.abs(self.Ar_finalE[k]),ri[k-1],ri[k])
         except ValueError:
             self.Ar_finalE = np.zeros(ri.size)
-        #plot(data[:,0][data[:,0]<r200],data[:,1][data[:,0]<r200],'ko',markersize=1,alpha=0.4)
-        #plot(ri[ri<r200],((self.Ar_final_opt[np.isfinite(chi)])[np.where(chi[np.isfinite(chi)] == np.min(chi[np.isfinite(chi)]))])[0])
-        #plot(ri,self.Ar_finalD,c='blue')
-        #xlim(0,1.6)
-        #show()
-        
+        '''
         #fit an NFW to the resulting caustic profile.
         self.NFWfit(ri[fitting_radii],self.Ar_finalD[fitting_radii]*np.sqrt(self.gb[fitting_radii]),self.halo_scale_radius,ri,self.gb)
         #self.NFWfit(ri[fitting_radii],self.Ar_finalD[fitting_radii],self.halo_scale_radius,ri,self.gb)
@@ -633,18 +633,16 @@ class CausticSurface:
             s,ax = subplots(1,figsize=(10,7))
             #ax.pcolormesh(ri,vi,Zi.T)
             ax.plot(data[:,0],data[:,1],'k.',markersize=0.5,alpha=0.8)
-            for t in range(self.Ar_final_opt.shape[0]):
-                ax.plot(ri[:self.Ar_final_opt[t].size],self.Ar_final_opt[t],c='0.4',alpha=0.5)
-                ax.plot(ri[:self.Ar_final_opt[t].size],-self.Ar_final_opt[t],c='0.4',alpha=0.5)
+            for t,con in enumerate(self.contours):
+                ax.plot(ri,con,c='0.4',alpha=0.5)
+                ax.plot(ri,-con,c='0.4',alpha=0.5)
             ax.plot(ri,self.Ar_finalD,c='blue')
             ax.plot(ri,-self.Ar_finalD,c='blue')
-            ax.plot(mid_rbin,avgmax,c='r')
-            ax.axhline(np.sqrt(4*self.vvar),c='black',ls='..')
-            ax.axhline(np.sqrt(self.vesc[self.level_elem]),c='green',ls='--')
+            #ax.plot(mid_rbin,avgmax,c='r')
             ax.set_ylim(0,5000)
             s.savefig('plotphase.png')
-            #close()
-            show()
+            close()
+            #show()
 
         ##Output galaxy membership
         kpc2km = 3.09e16
@@ -664,9 +662,6 @@ class CausticSurface:
             vcompare = fcomp(data[k,0])
             if np.abs(vcompare) >= np.abs(data[k,1]):
                 self.memflag[k] = 1
-
-        #find contours (new)
-        self.Ar_finalD = self.findcontours(Zi,self.levels,ri,vi,r200,self.vvar,Hz,q)
 
     def findsurface_inf(self,data,ri,vi,Zi,Zi_inf,memberflags=None,r200=2.0,maxv=5000.0,halo_scale_radius=None,halo_scale_radius_e=0.01,halo_vdisp=None,beta=None):
         """
@@ -1060,12 +1055,7 @@ class CausticSurface:
                 philimit = np.abs(Ar[j]) #phi integral limits
                 phir[j] = self.findphir(Zi[j][np.where((vi<philimit) & (vi>-philimit))],vi[np.where((vi<philimit) & (vi>-philimit))])
             tot_avg[i] = np.trapz(Ar**2*phir,useri)/np.trapz(phir,useri)
-            plot(ri,self.contours[isrt],'k',alpha=0.6)
-            axhline(avg_contours[isrt])
         final_contour = self.contours[i_sort_small[((tot_avg - 4.0*vvar)**2.0).argmin()]]
-        axhline(4.0*vvar,color='k',lw=2)
-        plot(ri,final_contour,'r')
-        show()
         print 'complete'
         return final_contour
         
