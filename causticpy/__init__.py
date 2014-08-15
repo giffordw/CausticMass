@@ -548,9 +548,6 @@ class CausticSurface:
                 self.gal_vdisp = np.std(data[:,1][np.where((data[:,0]<r200) & (np.abs(data[:,1])<maxv))],ddof=1)
             self.vvar = self.gal_vdisp**2
 
-        #find contours (new)
-        self.Ar_finalD = self.findcontours(Zi,self.levels,ri,vi,r200,self.vvar,Hz,q)
-        
         #initilize arrays
         self.vesc = np.zeros(self.levels.size)
         self.Ar_final_opt = np.zeros((self.levels.size,ri[np.where((ri<r200) & (ri>=0))].size))
