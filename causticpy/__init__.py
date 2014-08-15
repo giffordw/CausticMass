@@ -549,7 +549,7 @@ class CausticSurface:
             self.vvar = self.gal_vdisp**2
 
         #find contours (new)
-        final_contour = self.findcontours(Zi,self.levels,ri,vi,r200,self.vvar,Hz,q)
+        self.Ar_finalD = self.findcontours(Zi,self.levels,ri,vi,r200,self.vvar,Hz,q)
         
         #initilize arrays
         self.vesc = np.zeros(self.levels.size)
@@ -574,7 +574,7 @@ class CausticSurface:
         #This exception occurs if self.skr is entirely NAN. A flag should be raised for this in the output table
         except ValueError:
             self.Ar_finalD = np.zeros(ri.size)
-
+        
         #Identify sharp phase-space edge
         numbins = 6
         perc_top = edge_perc #what percent of top velocity galaxies per/bin used to identify surface
@@ -641,7 +641,6 @@ class CausticSurface:
                 ax.plot(ri[:self.Ar_final_opt[t].size],-self.Ar_final_opt[t],c='0.4',alpha=0.5)
             ax.plot(ri,self.Ar_finalD,c='blue')
             ax.plot(ri,-self.Ar_finalD,c='blue')
-            ax.plot(ri,final_contour,c='green')
             ax.plot(mid_rbin,avgmax,c='r')
             ax.axhline(np.sqrt(4*self.vvar),c='black',ls='..')
             ax.axhline(np.sqrt(self.vesc[self.level_elem]),c='green',ls='--')
@@ -668,6 +667,9 @@ class CausticSurface:
             vcompare = fcomp(data[k,0])
             if np.abs(vcompare) >= np.abs(data[k,1]):
                 self.memflag[k] = 1
+
+        #find contours (new)
+        self.Ar_finalD = self.findcontours(Zi,self.levels,ri,vi,r200,self.vvar,Hz,q)
 
     def findsurface_inf(self,data,ri,vi,Zi,Zi_inf,memberflags=None,r200=2.0,maxv=5000.0,halo_scale_radius=None,halo_scale_radius_e=0.01,halo_vdisp=None,beta=None):
         """
