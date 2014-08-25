@@ -1053,9 +1053,11 @@ class CausticSurface:
             phir = np.zeros(useri.size)
             for j in range(useri.size):
                 philimit = np.abs(Ar[j]) #phi integral limits
-                phir[j] = self.findphir(Zi[j][np.where((vi<philimit) & (vi>-philimit))],vi[np.where((vi<philimit) & (vi>-philimit))])
-            print np.trapz(phir,useri)
-            tot_avg[i] = np.trapz(Ar**2*phir,useri)/np.trapz(phir,useri)
+                phir[j] = np.sum(Zi[j][np.where((vi<philimit) & (vi>-philimit))])
+                #phir[j] = self.findphir(Zi[j][np.where((vi<philimit) & (vi>-philimit))],vi[np.where((vi<philimit) & (vi>-philimit))])
+            #print np.trapz(phir,useri)
+            #tot_avg[i] = np.trapz(Ar**2*phir,useri) / np.trapz(phir,useri)
+            tot_avg[i] = np.sum(Ar**2 * phir) / np.sum(phir)
         final_contour = self.contours[i_sort_small[((tot_avg - 4.0*vvar)**2.0).argmin()]]
         print 'complete'
         return final_contour
