@@ -235,7 +235,7 @@ class Caustic:
                 self.S.findsurface_inf(self.data_set,self.x_range,self.y_range,self.img_tot,self.img_inf,memberflags=self.data_set[:,-1],r200=self.r200,Hz=self.Hz)
 
         self.caustic_profile = self.S.Ar_finalD
-        #self.caustic_fit = self.S.vesc_fit
+        self.caustic_fit = self.S.vesc_fit
         self.caustic_edge = self.S.Ar_finalE
         self.gal_vdisp = self.S.gal_vdisp
         self.memflag = self.S.memflag
@@ -250,7 +250,7 @@ class Caustic:
 
             self.mprof = self.Mass.massprofile
             self.mprof_fbeta = self.Mass2.massprofile
-            #self.mprof_edge = self.MassE.massprofile
+            self.mprof_edge = self.MassE.massprofile
             self.r200_est = self.Mass.r200_est
             self.r200_est_fbeta = self.Mass2.r200_est
             self.M200_est = self.Mass.M200_est
