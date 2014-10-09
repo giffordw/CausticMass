@@ -640,6 +640,7 @@ class CausticSurface:
             ax.plot(ri,-self.Ar_finalD,c='blue')
             #ax.plot(mid_rbin,avgmax,c='r')
             ax.set_ylim(0,5000)
+            ax.set_xlim(0,4)
             s.savefig('plotphase.png')
             close()
             #show()
