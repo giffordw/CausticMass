@@ -253,11 +253,15 @@ class Caustic:
             self.mprof_edge = self.MassE.massprofile
             self.r200_est = self.Mass.r200_est
             self.r200_est_fbeta = self.Mass2.r200_est
+            self.r500_est = self.Mass.r500_est
+            self.r500_est_fbeta = self.Mass2.r500_est
             self.M200_est = self.Mass.M200_est
             self.M200_est_fbeta = self.Mass2.M200_est
             self.M200_fbeta = self.Mass2.M200
             self.M200_edge = self.MassE.M200
             self.M200_edge_est = self.MassE.M200_est
+            self.M500_est = self.Mass.M500_est
+            self.M500_est_fbeta = self.Mass2.M500_est
 
             print 'r200 estimate: ',self.Mass2.r200_est
             print 'M200 estimate: ',self.Mass2.M200_est
@@ -1136,11 +1140,14 @@ class MassCalc:
             #self.r200_est = (ri[:self.f_beta.size])[np.where(self.avg_density >= 200*self.crit)[0]+1][-1]
             finterp = interp1d(self.avg_density[::-1],ri[:self.f_beta.size][::-1])
             self.r200_est = finterp(200*self.crit)
+            self.r500_est = finterp(500*self.crit)
         except IndexError:
             self.r200_est = 0.0
+            self.r500_est = 0.0
         #self.M200_est = self.massprofile[np.where(ri[:self.f_beta.size] <= self.r200_est)[0][-1]]
         finterp = interp1d(ri[:self.f_beta.size],self.massprofile)
         self.M200_est = finterp(self.r200_est)
+        self.M500_est = finterp(self.r500_est)
         self.M200 = self.massprofile[np.where(ri[:self.f_beta.size] <= r200)[0][-1]]
             
 
