@@ -1061,7 +1061,7 @@ class CausticSurface:
             tot_avg[i] = np.sum(Ar**2 * phir) / np.sum(phir)
         final_contour = self.contours[i_sort_small[((tot_avg - 4.0*vvar)**2.0).argmin()]]
         print 'complete'
-        return final_contour
+        return np.abs(final_contour)
         
 
 
