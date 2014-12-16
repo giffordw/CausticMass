@@ -615,7 +615,7 @@ class CausticSurface:
             Ar_comp = fint(mid_rbin[mid_rbin<np.max(ri[ri<r200])]) #interpolated contour
             chi = np.append(chi,np.sum((Ar_comp-mincomp[mid_rbin<np.max(ri[ri<r200])])**2)) #measure squared distance
         try:
-            self.Ar_finalE = self.contours[np.isfinite(chi)][np.where(chi[np.isfinite(chi)] == np.min(chi[np.isfinite(chi)]))] #find level with min chi value
+            self.Ar_finalE = np.abs(self.contours[np.isfinite(chi)][np.where(chi[np.isfinite(chi)] == np.min(chi[np.isfinite(chi)]))]) #find level with min chi value
             #self.level_finalE = ((self.levels[np.isfinite(chi)])[np.where(chi[np.isfinite(chi)] == np.min(chi[np.isfinite(chi)]))])[0] #find level with min chi value
             #self.Ar_finalE = np.zeros(ri.size)
             #for k in range(self.Ar_finalE.size):
@@ -1061,7 +1061,7 @@ class CausticSurface:
             tot_avg[i] = np.sum(Ar**2 * phir) / np.sum(phir)
         final_contour = self.contours[i_sort_small[((tot_avg - 4.0*vvar)**2.0).argmin()]]
         print 'complete'
-        return np.abs(final_contour)
+        return final_contour
         
 
 
