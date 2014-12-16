@@ -584,48 +584,44 @@ class CausticSurface:
         #Identify sharp phase-space edge
         numbins = 6
         perc_top = edge_perc #what percent of top velocity galaxies per/bin used to identify surface
-        numrval = (data[:,0][data[:,0]< r200]).size
-        size_bin = int(np.ceil(numrval*1.0/numbins))
-        rsort = data[:,0][np.argsort(data[:,0])]
+        numrval = (data[:,0][data[:,0]< r200]).size #number of galaxies less than r200
+        size_bin = int(np.ceil(numrval*1.0/numbins)) #how many galaxies are in each bin
+        rsort = data[:,0][np.argsort(data[:,0])] #sort r positions
         if mirror == True:
-            vsort = np.abs(data[:,1][np.argsort(data[:,0])])
+            vsort = np.abs(data[:,1][np.argsort(data[:,0])]) #sort absolute value of velocities by r position
         else:
-            vsort = data[:,1][np.argsort(data[:,0])]
+            vsort = data[:,1][np.argsort(data[:,0])] #same as above but not abs
         mid_rbin = np.array([])
         avgmax = np.array([])
         avgmin = np.array([])
         mincomp = np.array([])
         for nn in range(numbins):
-            vbin = vsort[nn*size_bin:(nn+1)*size_bin]
+            vbin = vsort[nn*size_bin:(nn+1)*size_bin] #pick velocities in bin # nn
             if vbin.size==0:
                 if nn >= 4: break
-            rbin = rsort[nn*size_bin:(nn+1)*size_bin]
-            vemax = (vbin[np.argsort(vbin)][::-1])[:int(np.ceil(vbin[vbin>0.0].size*perc_top))]
-            vemin = (vbin[np.argsort(vbin)])[:int(np.ceil(vbin[vbin<0.0].size*perc_top))]
-            avgmax = np.append(avgmax,np.average(vemax))
-            avgmin = np.append(avgmin,np.average(vemin))
+            rbin = rsort[nn*size_bin:(nn+1)*size_bin] #pick radii in bin # nn
+            vemax = (vbin[np.argsort(vbin)][::-1])[:int(np.ceil(vbin[vbin>0.0].size*perc_top))] #sort by velocity -> flip array from max-min -> take first edge_perc values where v>0
+            vemin = (vbin[np.argsort(vbin)])[:int(np.ceil(vbin[vbin<0.0].size*perc_top))] #sort by velocity -> take first edge_perc values where v<0
+            avgmax = np.append(avgmax,np.average(vemax)) #add average of top edge_perc velocities to max array
+            avgmin = np.append(avgmin,np.average(vemin)) #same as above but min array
             #take the minimum of either the above || below zero caustic
             if np.min(vbin) >= 0: mincomp = np.append(mincomp,avgmax[nn]) #if no negative velocities (aka, mirrored)
             else: mincomp = np.append(mincomp,np.min([np.abs(avgmin[nn]),avgmax[nn]])) #else take the minimum extreme
-            #mincomp = np.append(mincomp,avgmin)
-            mid_rbin = np.append(mid_rbin,np.median(rbin))
+            mid_rbin = np.append(mid_rbin,np.median(rbin)) #take median rvalue of bin
         chi = np.array([])
+        #loop through contours and find squared difference with edge extreme
         for nn in range(len(self.contours)):
-            fint = interp1d(ri[ri<r200],self.contours[nn][ri<r200])
-            #try:
-            Ar_comp = fint(mid_rbin[mid_rbin<np.max(ri[ri<r200])])
-            chi = np.append(chi,np.sum((Ar_comp-mincomp[mid_rbin<np.max(ri[ri<r200])])**2))
-            #except ValueError: #sometimes I get an out of bounds error here. Not sure why since it should be in range
-            #    Ar_comp = fint(mid_rbin[mid_rbin<np.max(ri[ri<r200])][:-1])
-            #    chi = np.append(chi,np.sum((Ar_comp-avgmax[mid_rbin<r200][:-1])**2))
-        #pdb.set_trace()
+            fint = interp1d(ri[ri<r200],self.contours[nn][ri<r200]) #interpolate contour
+            Ar_comp = fint(mid_rbin[mid_rbin<np.max(ri[ri<r200])]) #interpolated contour
+            chi = np.append(chi,np.sum((Ar_comp-mincomp[mid_rbin<np.max(ri[ri<r200])])**2)) #measure squared distance
         try:
-            self.level_finalE = ((self.levels[np.isfinite(chi)])[np.where(chi[np.isfinite(chi)] == np.min(chi[np.isfinite(chi)]))])[0]
-            self.Ar_finalE = np.zeros(ri.size)
-            for k in range(self.Ar_finalE.size):
-                self.Ar_finalE[k] = self.findAofr(self.level_finalE,Zi[k],vi)
-                if k != 0:
-                    self.Ar_finalE[k] = self.restrict_gradient2(np.abs(self.Ar_finalE[k-1]),np.abs(self.Ar_finalE[k]),ri[k-1],ri[k])
+            self.Ar_finalE = self.contours[np.isfinite(chi)][np.where(chi[np.isfinite(chi)] == np.min(chi[np.isfinite(chi)]))] #find level with min chi value
+            #self.level_finalE = ((self.levels[np.isfinite(chi)])[np.where(chi[np.isfinite(chi)] == np.min(chi[np.isfinite(chi)]))])[0] #find level with min chi value
+            #self.Ar_finalE = np.zeros(ri.size)
+            #for k in range(self.Ar_finalE.size):
+            #    self.Ar_finalE[k] = self.findAofr(self.level_finalE,Zi[k],vi)
+            #    if k != 0:
+            #        self.Ar_finalE[k] = self.restrict_gradient2(np.abs(self.Ar_finalE[k-1]),np.abs(self.Ar_finalE[k]),ri[k-1],ri[k])
         except ValueError:
             self.Ar_finalE = np.zeros(ri.size)
         
