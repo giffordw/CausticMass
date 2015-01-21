@@ -128,19 +128,19 @@ class Caustic:
         if np.max(np.array([upper_max,-lower_max])) > 1000.0+np.min(np.array([upper_max,-lower_max])):
             self.data_set = self.data_set[np.where(np.abs(self.data_set[:,1])<1000.0+np.min(np.array([upper_max,-lower_max])))]
         '''
-        '''
+        
         #measure Ngal above mag limit
         if absflag:
             abs_mag = self.data_table[:,5]
         else:
             abs_mag = self.data_table[:,7] - magnitudes.distance_modulus(self.clus_z,**fidcosmo)
-        self.Ngal_1mpc = self.r[np.where((abs_mag < -20.55) & (self.r < 1.0) & (np.abs(self.v) < 3500))].size
-        '''
+        self.Ngal_1mpc = self.r[np.where((abs_mag < -19.55) & (self.r < 0.5) & (np.abs(self.v) < 3500))].size
+        
         if r200 == None:
-            #self.r200 = 0.01*self.Ngal_1mpc+0.584#+np.random.normal(0,0.099)
             vdisp_prelim = astStats.biweightScale(self.data_set[:,1][np.where(self.data_set[:,0]<3.0)],9.0)
             r200_mean_prelim = 0.002*vdisp_prelim + 0.40
             self.r200 = r200_mean_prelim/1.7
+            self.r200 = self.Ngal_1mpc**0.51*np.exp(-1.86)
             '''
             #original r200 est
             rclip,vclip = self.shiftgapper(np.vstack((self.r[np.where((self.r<3.0) & (np.abs(self.v)<3500.0))],self.v[np.where((self.r<3.0) & (np.abs(self.v)<3500.0))])).T).T
