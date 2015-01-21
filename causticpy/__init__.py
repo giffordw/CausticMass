@@ -138,9 +138,11 @@ class Caustic:
         
         if r200 == None:
             vdisp_prelim = astStats.biweightScale(self.data_set[:,1][np.where(self.data_set[:,0]<3.0)],9.0)
-            r200_mean_prelim = 0.002*vdisp_prelim + 0.40
-            self.r200 = r200_mean_prelim/1.7
-            self.r200 = self.Ngal_1mpc**0.51*np.exp(-1.86)
+            if np.sum(abs_mag) == 0:
+                r200_mean_prelim = 0.002*vdisp_prelim + 0.40
+                self.r200 = r200_mean_prelim/1.7
+            else:
+                self.r200 = self.Ngal_1mpc**0.51*np.exp(-1.86)
             '''
             #original r200 est
             rclip,vclip = self.shiftgapper(np.vstack((self.r[np.where((self.r<3.0) & (np.abs(self.v)<3500.0))],self.v[np.where((self.r<3.0) & (np.abs(self.v)<3500.0))])).T).T
