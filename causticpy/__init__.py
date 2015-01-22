@@ -130,11 +130,15 @@ class Caustic:
         '''
         
         #measure Ngal above mag limit
-        if absflag:
-            abs_mag = self.data_table[:,5]
-        else:
-            abs_mag = self.data_table[:,7] - magnitudes.distance_modulus(self.clus_z,**fidcosmo)
-        self.Ngal_1mpc = self.r[np.where((abs_mag < -19.55) & (self.r < 0.5) & (np.abs(self.v) < 3500))].size
+        try:
+            if absflag:
+                abs_mag = self.data_table[:,5]
+            else:
+                abs_mag = self.data_table[:,7] - magnitudes.distance_modulus(self.clus_z,**fidcosmo)
+            self.Ngal_1mpc = self.r[np.where((abs_mag < -19.55) & (self.r < 0.5) & (np.abs(self.v) < 3500))].size
+        except IndexError:
+            abs_mag = np.zeros(self.data_table[:,0].size)
+            self.Ngal_1mpc = None
         
         if r200 == None:
             vdisp_prelim = astStats.biweightScale(self.data_set[:,1][np.where(self.data_set[:,0]<3.0)],9.0)
