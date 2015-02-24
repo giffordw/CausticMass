@@ -121,13 +121,13 @@ class Caustic:
         if gapper == True:
             self.data_set = self.shiftgapper(self.data_set)
         print 'DATA SET SIZE',self.data_set[:,0].size
-        '''
-        #tries to identify double groups that slip through the gapper process
-        upper_max = np.max(self.data_set[:,1][np.where((self.data_set[:,1]>0.0)&(self.data_set[:,0]<1.0))])
-        lower_max = np.min(self.data_set[:,1][np.where((self.data_set[:,1]<0.0)&(self.data_set[:,0]<1.0))])
-        if np.max(np.array([upper_max,-lower_max])) > 1000.0+np.min(np.array([upper_max,-lower_max])):
-            self.data_set = self.data_set[np.where(np.abs(self.data_set[:,1])<1000.0+np.min(np.array([upper_max,-lower_max])))]
-        '''
+        
+        ##tries to identify double groups that slip through the gapper process
+        #upper_max = np.max(self.data_set[:,1][np.where((self.data_set[:,1]>0.0)&(self.data_set[:,0]<1.0))])
+        #lower_max = np.min(self.data_set[:,1][np.where((self.data_set[:,1]<0.0)&(self.data_set[:,0]<1.0))])
+        #if np.max(np.array([upper_max,-lower_max])) > 1000.0+np.min(np.array([upper_max,-lower_max])):
+        #    self.data_set = self.data_set[np.where(np.abs(self.data_set[:,1])<1000.0+np.min(np.array([upper_max,-lower_max])))]
+        
         
         #measure Ngal above mag limit
         try:
@@ -147,17 +147,17 @@ class Caustic:
                 self.r200 = r200_mean_prelim/1.7
             else:
                 self.r200 = self.Ngal_1mpc**0.51*np.exp(-1.86)
-            '''
-            #original r200 est
-            rclip,vclip = self.shiftgapper(np.vstack((self.r[np.where((self.r<3.0) & (np.abs(self.v)<3500.0))],self.v[np.where((self.r<3.0) & (np.abs(self.v)<3500.0))])).T).T
-            vdisp_prelim_1 = astStats.biweightClipped(vclip,9.0,3.0)['biweightScale']
-            rclip,vclip = self.shiftgapper(np.vstack((self.r[np.where((self.r<1.5) & (np.abs(self.v)<3500.0))],self.v[np.where((self.r<1.5) & (np.abs(self.v)<3500.0))])).T).T
-            vdisp_prelim_2 = astStats.biweightClipped(vclip,9.0,3.0)['biweightScale']
-            if vdisp_prelim_2 < 0.6*vdisp_prelim_1: vdisp_prelim = vdisp_prelim_2
-            else: vdisp_prelim = vdisp_prelim_1
-            r200_mean_prelim = 0.002*vdisp_prelim + 0.40
-            self.r200 = r200_mean_prelim/1.7
-            '''
+            
+            ##original r200 est
+            #rclip,vclip = self.shiftgapper(np.vstack((self.r[np.where((self.r<3.0) & (np.abs(self.v)<3500.0))],self.v[np.where((self.r<3.0) & (np.abs(self.v)<3500.0))])).T).T
+            #vdisp_prelim_1 = astStats.biweightClipped(vclip,9.0,3.0)['biweightScale']
+            #rclip,vclip = self.shiftgapper(np.vstack((self.r[np.where((self.r<1.5) & (np.abs(self.v)<3500.0))],self.v[np.where((self.r<1.5) & (np.abs(self.v)<3500.0))])).T).T
+            #vdisp_prelim_2 = astStats.biweightClipped(vclip,9.0,3.0)['biweightScale']
+            #if vdisp_prelim_2 < 0.6*vdisp_prelim_1: vdisp_prelim = vdisp_prelim_2
+            #else: vdisp_prelim = vdisp_prelim_1
+            #r200_mean_prelim = 0.002*vdisp_prelim + 0.40
+            #self.r200 = r200_mean_prelim/1.7
+            
             if self.r200 > 3.0:
                 self.r200 = 3.0
             if 3.0*self.r200 < 6.0:
@@ -215,13 +215,13 @@ class Caustic:
             #if self.pre_vdisp2 > 1.75*self.pre_vdisp: self.pre_vdisp_comb = 9.15*self.Ngal_1mpc+450.32
             #else:
             self.pre_vdisp_comb = self.pre_vdisp2
-            '''
-            if self.data_set[:,1][np.where(self.data_set[:,0]<self.r200)].size >= 10:
-                self.pre_vdisp_comb = astStats.biweightScale(self.data_set[:,1][np.where(self.data_set[:,0]<self.r200)],9.0)
-            else:
-                self.pre_vdisp_comb = np.std(self.data_set[:,1][np.where(self.data_set[:,0]<self.r200)],ddof=1)
-                #self.pre_vdisp_comb = (self.pre_vdisp*(self.pre_vdisp2*self.v_unc)**2+self.pre_vdisp2*118.14**2)/(118.14**2+(self.pre_vdisp2*self.v_unc)**2)
-            '''
+            
+            #if self.data_set[:,1][np.where(self.data_set[:,0]<self.r200)].size >= 10:
+            #    self.pre_vdisp_comb = astStats.biweightScale(self.data_set[:,1][np.where(self.data_set[:,0]<self.r200)],9.0)
+            #else:
+            #    self.pre_vdisp_comb = np.std(self.data_set[:,1][np.where(self.data_set[:,0]<self.r200)],ddof=1)
+            #    #self.pre_vdisp_comb = (self.pre_vdisp*(self.pre_vdisp2*self.v_unc)**2+self.pre_vdisp2*118.14**2)/(118.14**2+(self.pre_vdisp2*self.v_unc)**2)
+            
         else:
             self.pre_vdisp_comb = clus_vdisp
         print 'Combined Vdisp=',self.pre_vdisp_comb
@@ -248,8 +248,6 @@ class Caustic:
 
         #Estimate the mass based off the caustic profile, beta profile (if given), and concentration (if given)
         if clus_z is not None:
-            #self.Mass = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=None,H0=H0)
-            #self.Mass2 = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=0.65,H0=H0)
             self.Mass = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=None,H0=H0)
             self.Mass2 = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=fbr,H0=H0)
             self.MassE = MassCalc(self.x_range,self.caustic_edge,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=fbr,H0=H0)
@@ -283,48 +281,6 @@ class Caustic:
             except:
                 self.vdisp_gal = 0.0
         return 1
-        
-        '''
-        self.err = 0
-        for k in range(4):
-            try:
-                #Identify caustic surface and members within the surface
-                Caustics = CausticSurface.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.memflag,r200=self.r200_est)
-                self.caustic_profile = Caustics.Ar_finalD
-                self.gal_vdisp = Caustics.gal_vdisp
-                self.memflag = Caustics.memflag
-                #Estimate the mass based off the caustic profile, beta profile (if given), and concentration (if given)
-                Mass = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200_est)
-                self.r200_est = Mass.r200_est
-                self.M200_est = Mass.M200_est
-                print 'r200 estimate: ',Mass.r200_est
-                print 'M200 estimate: ',Mass.M200_est
-            except:
-                #Identify caustic surface and members within the surface
-                Caustics = CausticSurface.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=r200)
-                self.caustic_profile = Caustics.Ar_finalD
-                self.gal_vdisp = Caustics.gal_vdisp
-                self.memflag = Caustics.memflag
-                #Estimate the mass based off the caustic profile, beta profile (if given), and concentration (if given)
-                Mass = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=r200)
-                self.r200_est = Mass.r200_est
-                self.M200_est = Mass.M200_est
-                print 'r200 estimate: ',Mass.r200_est
-                print 'M200 estimate: ',Mass.M200_est
-                self.err = 1
-                break
-        
-            #calculate velocity dispersion
-        try:
-            self.vdisp_gal = astStats.biweightScale(self.data_set[:,1][self.memflag==1],9.0)
-        except:
-            try:
-                self.vdisp_gal = np.std(self.data_set[:,1][self.memflag==1],ddof=1)
-            except:
-                self.vdisp_gal = 0.0
-        '''
-
-
 
         
     def zdistance(self,clus_z,H0=100.0):
@@ -558,31 +514,31 @@ class CausticSurface:
             except:
                 self.gal_vdisp = np.std(data[:,1][np.where((data[:,0]<r200) & (np.abs(data[:,1])<maxv))],ddof=1)
             self.vvar = self.gal_vdisp**2
-        '''
-        #initilize arrays
-        self.vesc = np.zeros(self.levels.size)
-        self.Ar_final_opt = np.zeros((self.levels.size,ri[np.where((ri<r200) & (ri>=0))].size))
         
-        #find the escape velocity for all level (kappa) guesses
-        for i in range(self.vesc.size):
-            self.vesc[i],self.Ar_final_opt[i] = self.findvesc(self.levels[i],ri,vi,Zi,r200)
-        
-        #optimization equation to search for minimum value
-        self.skr = (self.vesc-4.0*self.vvar)**2
+        ##initilize arrays
+        #self.vesc = np.zeros(self.levels.size)
+        #self.Ar_final_opt = np.zeros((self.levels.size,ri[np.where((ri<r200) & (ri>=0))].size))
+        #
+        ##find the escape velocity for all level (kappa) guesses
+        #for i in range(self.vesc.size):
+        #    self.vesc[i],self.Ar_final_opt[i] = self.findvesc(self.levels[i],ri,vi,Zi,r200)
+        #
+        ##optimization equation to search for minimum value
+        #self.skr = (self.vesc-4.0*self.vvar)**2
 
-        try:
-            self.level_elem = np.where(self.skr == np.min(self.skr[np.isfinite(self.skr)]))[0][0]
-            self.level_final = self.levels[self.level_elem]
-            self.Ar_finalD = np.zeros(ri.size)
-            for k in range(self.Ar_finalD.size):
-                self.Ar_finalD[k] = self.findAofr(self.level_final,Zi[k],vi)
-                if k != 0:
-                    self.Ar_finalD[k] = self.restrict_gradient2(np.abs(self.Ar_finalD[k-1]),np.abs(self.Ar_finalD[k]),ri[k-1],ri[k])
-        
-        #This exception occurs if self.skr is entirely NAN. A flag should be raised for this in the output table
-        except ValueError:
-            self.Ar_finalD = np.zeros(ri.size)
-        '''
+        #try:
+        #    self.level_elem = np.where(self.skr == np.min(self.skr[np.isfinite(self.skr)]))[0][0]
+        #    self.level_final = self.levels[self.level_elem]
+        #    self.Ar_finalD = np.zeros(ri.size)
+        #    for k in range(self.Ar_finalD.size):
+        #        self.Ar_finalD[k] = self.findAofr(self.level_final,Zi[k],vi)
+        #        if k != 0:
+        #            self.Ar_finalD[k] = self.restrict_gradient2(np.abs(self.Ar_finalD[k-1]),np.abs(self.Ar_finalD[k]),ri[k-1],ri[k])
+        #
+        ##This exception occurs if self.skr is entirely NAN. A flag should be raised for this in the output table
+        #except ValueError:
+        #    self.Ar_finalD = np.zeros(ri.size)
+        #
 
         #find contours (new)
         self.Ar_finalD = self.findcontours(Zi,self.levels,ri,vi,r200,self.vvar,Hz,q)
@@ -980,21 +936,7 @@ class CausticSurface:
                     slot = i
                     break
         return slot
-        '''
-        slot = dvals.size - 1
-        if level > np.max(dvals):
-            return 0
-        else:
-            for i in range(dvals.size):
-                if level >= dvals[i] and i > np.where(dvals==np.max(dvals))[0][-1]:
-                    if i != 0:
-                        slot = i-1
-                        break
-                    else:
-                        slot = i
-                        break
-        return slot
-        '''
+        
 
     def NFWfit(self,ri,Ar,halo_srad,ri_full,g_b):
         min_func = lambda x,d0: np.sqrt(2*4*np.pi*4.5e-48*d0*(halo_srad)**2*np.log(1+x/halo_srad)/(x/halo_srad))*3.08e19
