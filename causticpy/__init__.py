@@ -655,12 +655,12 @@ class CausticSurface:
         kpc2km = 3.09e16
         try:
             fitfunc = lambda x,a,b: np.sqrt(2*4*np.pi*6.67e-20*a*(b*kpc2km)**2*np.log(1+x/b)/(x/b))
-            popt,pcov = curve_fit(fitfunc,ri,self.Ar_finalD)
-            self.Arfit = fitfunc(ri,popt[0],popt[1])
+            self.popt,self.pcov = curve_fit(fitfunc,ri,self.Ar_finalD)
+            self.Arfit = fitfunc(ri,self.popt[0],self.popt[1])
         except:
             fitfunc = lambda x,a: np.sqrt(2*4*np.pi*6.67e-20*a*(30.0*kpc2km)**2*np.log(1+x/30.0)/(x/30.0))
-            popt,pcov = curve_fit(fitfunc,ri,self.Ar_finalD)
-            self.Arfit = fitfunc(ri,popt[0])
+            self.popt,pcov = curve_fit(fitfunc,ri,self.Ar_finalD)
+            self.Arfit = fitfunc(ri,self.popt[0])
         self.memflag = np.zeros(data.shape[0])
         #fcomp = interp1d(ri,self.Ar_finalD)
         #print ri.size, self.vesc_fit.size
@@ -793,12 +793,12 @@ class CausticSurface:
         kpc2km = 3.09e16
         try:
             fitfunc = lambda x,a,b: np.sqrt(2*4*np.pi*6.67e-20*a*(b*kpc2km)**2*np.log(1+x/b)/(x/b))
-            popt,pcov = curve_fit(fitfunc,ri,self.Ar_final)
-            self.vesc_fit = fitfunc(ri,popt[0],popt[1])
+            self.popt,self.pcov = curve_fit(fitfunc,ri,self.Ar_final)
+            self.vesc_fit = fitfunc(ri,self.popt[0],self.popt[1])
         except:
             fitfunc = lambda x,a: np.sqrt(2*4*np.pi*6.67e-20*a*(30.0*kpc2km)**2*np.log(1+x/30.0)/(x/30.0))
-            popt,pcov = curve_fit(fitfunc,ri,self.Ar_finalD)
-            self.vesc_fit = fitfunc(ri,popt[0])
+            self.popt,self.pcov = curve_fit(fitfunc,ri,self.Ar_finalD)
+            self.vesc_fit = fitfunc(ri,self.popt[0])
 
         self.memflag = np.zeros(data.shape[0])
         #fcomp = interp1d(ri,self.Ar_finalD)
