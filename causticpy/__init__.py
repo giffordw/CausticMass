@@ -543,16 +543,44 @@ class CausticSurface:
         #find contours (new)
         self.Ar_finalD = self.findcontours(Zi,self.levels,ri,vi,r200,self.vvar,Hz,q)
         
+        data_e = data
+        #remove outliers from edge calculation
+        r_inside = []
+        v_inside = []
+        i = 0
+        while i <= np.int(ri.size*1.0/5.0):
+            inner_el = 5*i
+            outer_el = 5*i + 5
+            inner_r = ri[inner_el]
+            outer_r = ri[outer_el]
+            deriv = (np.average(Zi[inner_el:outer_el],axis=0)[1:]-np.average(Zi[inner_el:outer_el],axis=0)[:-1]) \
+                        /(vi[1:]-vi[:-1])
+            roots = np.sort(np.abs(vi[((np.average(Zi[inner_el:outer_el],axis=0)[1:]- \
+                np.average(Zi[inner_el:outer_el],axis=0)[:-1])/(vi[1:]- \
+                vi[:-1]))[1:]*((np.average(Zi[inner_el:outer_el],axis=0)[1:]- \
+                np.average(Zi[inner_el:outer_el],axis=0)[:-1])/(vi[1:]-vi[:-1]))[:-1] < 0]))
+            databinned = data_e[np.where((data_e[:,0]>=inner_r)&(data_e[:,0]<outer_r))]
+            if roots[1] < 500.0:
+                if roots[2] < 500.0:
+                    root = 3500.0
+                else:
+                    root = roots[2]
+            else: root = roots[1]
+            r_inside.extend(databinned[:,0][np.where(np.abs(databinned[:,1])<root)])
+            v_inside.extend(databinned[:,1][np.where(np.abs(databinned[:,1])<root)])
+            i += 5
+        data_e = np.vstack((np.array(r_inside),np.array(v_inside))).T
+
         #Identify sharp phase-space edge
         numbins = 6
         perc_top = edge_perc #what percent of top velocity galaxies per/bin used to identify surface
-        numrval = (data[:,0][data[:,0]< r200]).size #number of galaxies less than r200
+        numrval = (data_e[:,0][data_e[:,0]< r200]).size #number of galaxies less than r200
         size_bin = int(np.ceil(numrval*1.0/numbins)) #how many galaxies are in each bin
-        rsort = data[:,0][np.argsort(data[:,0])] #sort r positions
+        rsort = data_e[:,0][np.argsort(data_e[:,0])] #sort r positions
         if mirror == True:
-            vsort = np.abs(data[:,1][np.argsort(data[:,0])]) #sort absolute value of velocities by r position
+            vsort = np.abs(data_e[:,1][np.argsort(data_e[:,0])]) #sort absolute value of velocities by r position
         else:
-            vsort = data[:,1][np.argsort(data[:,0])] #same as above but not abs
+            vsort = data_e[:,1][np.argsort(data_e[:,0])] #same as above but not abs
         mid_rbin = np.array([])
         avgmax = np.array([])
         avgmin = np.array([])
