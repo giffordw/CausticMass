@@ -476,7 +476,7 @@ class CausticSurface:
     def __init__(self):
         pass
     
-    def findsurface(self,data,ri,vi,Zi,memberflags=None,r200=2.0,maxv=5000.0,halo_scale_radius=None,halo_scale_radius_e=0.01,halo_vdisp=None,bin=None,plotphase=True,beta=None,mirror=True,q=10.0,Hz = 100.0,edge_perc=0.1):
+    def findsurface(self,data,ri,vi,Zi,memberflags=None,r200=2.0,maxv=5000.0,halo_scale_radius=None,halo_scale_radius_e=0.01,halo_vdisp=None,bin=None,plotphase=False,beta=None,mirror=True,q=10.0,Hz = 100.0,edge_perc=0.1):
         kappaguess = np.max(Zi) #first guess at the level
         #self.levels = np.linspace(0.00001,kappaguess,100)[::-1] #create levels (kappas) to try out
         self.levels = 10**(np.linspace(np.log10(np.min(Zi[Zi>0]/5.0)),np.log10(kappaguess),200)[::-1]) 
@@ -548,28 +548,32 @@ class CausticSurface:
         r_inside = []
         v_inside = []
         i = 0
-        while i <= np.int(ri.size*1.0/5.0):
-            inner_el = 5*i
-            outer_el = 5*i + 5
-            inner_r = ri[inner_el]
-            outer_r = ri[outer_el]
-            deriv = (np.average(Zi[inner_el:outer_el],axis=0)[1:]-np.average(Zi[inner_el:outer_el],axis=0)[:-1]) \
-                        /(vi[1:]-vi[:-1])
-            roots = np.sort(np.abs(vi[((np.average(Zi[inner_el:outer_el],axis=0)[1:]- \
-                np.average(Zi[inner_el:outer_el],axis=0)[:-1])/(vi[1:]- \
-                vi[:-1]))[1:]*((np.average(Zi[inner_el:outer_el],axis=0)[1:]- \
-                np.average(Zi[inner_el:outer_el],axis=0)[:-1])/(vi[1:]-vi[:-1]))[:-1] < 0]))
-            databinned = data_e[np.where((data_e[:,0]>=inner_r)&(data_e[:,0]<outer_r))]
-            if roots[1] < 500.0:
-                if roots[2] < 500.0:
-                    root = 3500.0
-                else:
-                    root = roots[2]
-            else: root = roots[1]
-            r_inside.extend(databinned[:,0][np.where(np.abs(databinned[:,1])<root)])
-            v_inside.extend(databinned[:,1][np.where(np.abs(databinned[:,1])<root)])
-            i += 5
-        data_e = np.vstack((np.array(r_inside),np.array(v_inside))).T
+        try:
+            while ri[i] <= np.max(data_e[:,0]) or i <= np.int(ri.size*1.0/5.0)+5:
+                inner_el = i
+                outer_el = i + 5
+                inner_r = ri[inner_el]
+                outer_r = ri[outer_el]
+                deriv = (np.average(Zi[inner_el:outer_el],axis=0)[1:]-np.average(Zi[inner_el:outer_el],axis=0)[:-1]) \
+                            /(vi[1:]-vi[:-1])
+                roots = np.sort(np.abs(vi[((np.average(Zi[inner_el:outer_el],axis=0)[1:]- \
+                    np.average(Zi[inner_el:outer_el],axis=0)[:-1])/(vi[1:]- \
+                    vi[:-1]))[1:]*((np.average(Zi[inner_el:outer_el],axis=0)[1:]- \
+                    np.average(Zi[inner_el:outer_el],axis=0)[:-1])/(vi[1:]-vi[:-1]))[:-1] < 0]))
+                databinned = data_e[np.where((data_e[:,0]>=inner_r)&(data_e[:,0]<outer_r))]
+                if len(roots) > 1:
+                    if roots[1] < 500.0:
+                        if roots[2] < 500.0:
+                            root = 3500.0
+                        else:
+                            root = roots[2]
+                    else: root = roots[1]
+                else: root = 3500
+                r_inside.extend(databinned[:,0][np.where(np.abs(databinned[:,1])<root)])
+                v_inside.extend(databinned[:,1][np.where(np.abs(databinned[:,1])<root)])
+                i += 5
+            data_e = np.vstack((np.array(r_inside),np.array(v_inside))).T
+        except: pass
 
         #Identify sharp phase-space edge
         numbins = 6
