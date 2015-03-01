@@ -573,7 +573,7 @@ class CausticSurface:
                 v_inside.extend(databinned[:,1][np.where(np.abs(databinned[:,1])<root)])
                 i += 5
             data_e = np.vstack((np.array(r_inside),np.array(v_inside))).T
-        except: pass
+        except: data_e = data
 
         #Identify sharp phase-space edge
         numbins = 6
