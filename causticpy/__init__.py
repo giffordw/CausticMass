@@ -563,10 +563,12 @@ class CausticSurface:
                 databinned = data_e[np.where((data_e[:,0]>=inner_r)&(data_e[:,0]<outer_r))]
                 if len(roots) > 1:
                     if roots[1] < 500.0:
-                        if roots[2] < 500.0:
-                            root = 3500.0
-                        else:
-                            root = roots[2]
+                        if len(roots) > 2:
+                            if roots[2] < 500.0:
+                                root = 3500.0
+                            else:
+                                root = roots[2]
+                        else: root = 3500.0
                     else: root = roots[1]
                 else: root = 3500
                 r_inside.extend(databinned[:,0][np.where(np.abs(databinned[:,1])<root)])
