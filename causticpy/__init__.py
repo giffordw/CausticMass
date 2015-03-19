@@ -665,6 +665,7 @@ class CausticSurface:
                 v_inside.extend(databinned[:,1][np.where(np.abs(databinned[:,1])<root)])
                 i += 5
             data_e = np.vstack((np.array(r_inside),np.array(v_inside))).T
+            return data_e
 
     def findsurface_inf(self,data,ri,vi,Zi,Zi_inf,memberflags=None,r200=2.0,maxv=5000.0,halo_scale_radius=None,halo_scale_radius_e=0.01,halo_vdisp=None,beta=None):
         """
