@@ -58,7 +58,7 @@ class Caustic:
     def __init__(self):
         pass
     
-    def run_caustic(self,data,gal_mags=None,gal_memberflag=None,clus_ra=None,clus_dec=None,clus_z=None,gal_r=None,gal_v=None,r200=None,clus_vdisp=None,rlimit=4.0,vlimit=3500,q=10.0,H0=100.0,xmax=6.0,ymax=5000.0,cut_sample=True,gapper=True,mirror=True,absflag=False,inflection=False,edge_perc=0.1,fbr=0.65):
+    def run_caustic(self,data,gal_mags=None,gal_memberflag=None,clus_ra=None,clus_dec=None,clus_z=None,gal_r=None,gal_v=None,r200=None,clus_vdisp=None,rlimit=4.0,vlimit=3500,q=10.0,H0=100.0,xmax=6.0,ymax=5000.0,cut_sample=True,edge_int_remove=False,gapper=True,mirror=True,absflag=False,inflection=False,edge_perc=0.1,fbr=0.65):
         self.S = CausticSurface()
         self.clus_ra = clus_ra
         self.clus_dec = clus_dec
@@ -231,7 +231,7 @@ class Caustic:
         print 'Calculating initial surface'
         if inflection == False:
             if gal_memberflag is None:
-                self.S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None,mirror=mirror,edge_perc=edge_perc,Hz=self.Hz)
+                self.S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None,mirror=mirror,edge_perc=edge_perc,Hz=self.Hz,edge_int_remove=edge_int_remove)
             else:
                 self.S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.data_set[:,-1],r200=self.r200,mirror=mirror,edge_perc=edge_perc,Hz=self.Hz)
         else:
@@ -476,7 +476,7 @@ class CausticSurface:
     def __init__(self):
         pass
     
-    def findsurface(self,data,ri,vi,Zi,memberflags=None,r200=2.0,maxv=5000.0,halo_scale_radius=None,halo_scale_radius_e=0.01,halo_vdisp=None,bin=None,plotphase=False,beta=None,mirror=True,q=10.0,Hz = 100.0,edge_perc=0.1):
+    def findsurface(self,data,ri,vi,Zi,memberflags=None,r200=2.0,maxv=5000.0,halo_scale_radius=None,halo_scale_radius_e=0.01,halo_vdisp=None,bin=None,plotphase=False,beta=None,mirror=True,q=10.0,Hz = 100.0,edge_perc=0.1,edge_int_remove=False):
         kappaguess = np.max(Zi) #first guess at the level
         #self.levels = np.linspace(0.00001,kappaguess,100)[::-1] #create levels (kappas) to try out
         self.levels = 10**(np.linspace(np.log10(np.min(Zi[Zi>0]/5.0)),np.log10(kappaguess),200)[::-1]) 
@@ -545,12 +545,12 @@ class CausticSurface:
         
         data_e = data
         #remove outliers from edge calculation
-        print 'big outlier reject'
-        try:
-            data_e = self.edge_outlier_clip(data_e,ri,vi,Zi)
-            print 'completed edge_outlier_clip'
-        except: 
-            data_e = data
+        if edge_int_remove:
+            try:
+                data_e = self.edge_outlier_clip(data_e,ri,vi,Zi)
+                print 'completed edge_outlier_clip'
+            except: 
+                data_e = data
 
         #Identify sharp phase-space edge
         numbins = 6
