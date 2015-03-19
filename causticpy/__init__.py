@@ -545,37 +545,12 @@ class CausticSurface:
         
         data_e = data
         #remove outliers from edge calculation
-        r_inside = []
-        v_inside = []
-        i = 0
+        print 'big outlier reject'
         try:
-            while ri[i] <= np.max(data_e[:,0]) or i <= np.int(ri.size*1.0/5.0)+5:
-                inner_el = i
-                outer_el = i + 5
-                inner_r = ri[inner_el]
-                outer_r = ri[outer_el]
-                deriv = (np.average(Zi[inner_el:outer_el],axis=0)[1:]-np.average(Zi[inner_el:outer_el],axis=0)[:-1]) \
-                            /(vi[1:]-vi[:-1])
-                roots = np.sort(np.abs(vi[((np.average(Zi[inner_el:outer_el],axis=0)[1:]- \
-                    np.average(Zi[inner_el:outer_el],axis=0)[:-1])/(vi[1:]- \
-                    vi[:-1]))[1:]*((np.average(Zi[inner_el:outer_el],axis=0)[1:]- \
-                    np.average(Zi[inner_el:outer_el],axis=0)[:-1])/(vi[1:]-vi[:-1]))[:-1] < 0]))
-                databinned = data_e[np.where((data_e[:,0]>=inner_r)&(data_e[:,0]<outer_r))]
-                if len(roots) > 1:
-                    if roots[1] < 500.0:
-                        if len(roots) > 2:
-                            if roots[2] < 500.0:
-                                root = 3500.0
-                            else:
-                                root = roots[2]
-                        else: root = 3500.0
-                    else: root = roots[1]
-                else: root = 3500
-                r_inside.extend(databinned[:,0][np.where(np.abs(databinned[:,1])<root)])
-                v_inside.extend(databinned[:,1][np.where(np.abs(databinned[:,1])<root)])
-                i += 5
-            data_e = np.vstack((np.array(r_inside),np.array(v_inside))).T
-        except: data_e = data
+            data_e = self.edge_outlier_clip(data_e,ri,vi,Zi)
+            print 'completed edge_outlier_clip'
+        except: 
+            data_e = data
 
         #Identify sharp phase-space edge
         numbins = 6
@@ -659,6 +634,37 @@ class CausticSurface:
             vcompare = fcomp(data[k,0])
             if np.abs(vcompare) >= np.abs(data[k,1]):
                 self.memflag[k] = 1
+
+    def edge_outlier_clip(self,data_e,ri,vi,Zi):
+            r_inside = []
+            v_inside = []
+            i = 0
+            while ri[i] <= np.max(data_e[:,0]) or i <= np.int(ri.size*1.0/5.0)+5:
+                inner_el = i
+                outer_el = i + 5
+                inner_r = ri[inner_el]
+                outer_r = ri[outer_el]
+                deriv = (np.average(Zi[inner_el:outer_el],axis=0)[1:]-np.average(Zi[inner_el:outer_el],axis=0)[:-1]) \
+                            /(vi[1:]-vi[:-1])
+                roots = np.sort(np.abs(vi[((np.average(Zi[inner_el:outer_el],axis=0)[1:]- \
+                    np.average(Zi[inner_el:outer_el],axis=0)[:-1])/(vi[1:]- \
+                    vi[:-1]))[1:]*((np.average(Zi[inner_el:outer_el],axis=0)[1:]- \
+                    np.average(Zi[inner_el:outer_el],axis=0)[:-1])/(vi[1:]-vi[:-1]))[:-1] < 0]))
+                databinned = data_e[np.where((data_e[:,0]>=inner_r)&(data_e[:,0]<outer_r))]
+                if len(roots) > 1:
+                    if roots[1] < 500.0:
+                        if len(roots) > 2:
+                            if roots[2] < 500.0:
+                                root = 3500.0
+                            else:
+                                root = roots[2]
+                        else: root = 3500.0
+                    else: root = roots[1]
+                else: root = 3500
+                r_inside.extend(databinned[:,0][np.where(np.abs(databinned[:,1])<root)])
+                v_inside.extend(databinned[:,1][np.where(np.abs(databinned[:,1])<root)])
+                i += 5
+            data_e = np.vstack((np.array(r_inside),np.array(v_inside))).T
 
     def findsurface_inf(self,data,ri,vi,Zi,Zi_inf,memberflags=None,r200=2.0,maxv=5000.0,halo_scale_radius=None,halo_scale_radius_e=0.01,halo_vdisp=None,beta=None):
         """
