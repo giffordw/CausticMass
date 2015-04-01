@@ -576,6 +576,7 @@ class CausticSurface:
             avgmax = np.append(avgmax,np.average(vemax)) #add average of top edge_perc velocities to max array
             avgmin = np.append(avgmin,np.average(vemin)) #same as above but min array
             #take the minimum of either the above || below zero caustic
+            if np.isnan(avgmax)[-1] == True: break
             if np.min(vbin) >= 0: mincomp = np.append(mincomp,avgmax[nn]) #if no negative velocities (aka, mirrored)
             else: mincomp = np.append(mincomp,np.min([np.abs(avgmin[nn]),avgmax[nn]])) #else take the minimum extreme
             mid_rbin = np.append(mid_rbin,np.median(rbin)) #take median rvalue of bin
