@@ -243,6 +243,7 @@ class Caustic:
         self.caustic_profile = self.S.Ar_finalD
         self.caustic_fit = self.S.vesc_fit
         self.caustic_edge = np.abs(self.S.Ar_finalE)
+        self.caustic_fit_edge = self.S.vesc_fit_e
         self.gal_vdisp = self.S.gal_vdisp
         self.memflag = self.S.memflag
 
@@ -252,6 +253,7 @@ class Caustic:
             self.Mass2 = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=fbr,H0=H0)
             self.MassE = MassCalc(self.x_range,self.caustic_edge,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=fbr,H0=H0)
             self.MassF = MassCalc(self.x_range,self.caustic_fit,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=fbr,H0=H0)
+            self.MassFE = MassCalc(self.x_range,self.caustic_fit_edge,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=fbr,H0=H0)
 
             self.mprof = self.Mass.massprofile
             self.mprof_fbeta = self.Mass2.massprofile
@@ -267,6 +269,8 @@ class Caustic:
             self.M200_edge_est = self.MassE.M200_est
             self.M200_fit = self.MassF.M200
             self.M200_fit_est = self.MassF.M200_est
+            self.M200_fit_edge = self.MassFE.M200
+            self.M200_fit_edge_est = self.MassFE.M200_est
             self.M500_est = self.Mass.M500_est
             self.M500_est_fbeta = self.Mass2.M500_est
 
@@ -601,7 +605,8 @@ class CausticSurface:
             self.Ar_finalE = np.zeros(ri.size)
         
         #fit an NFW to the resulting caustic profile.
-        self.NFWfit(ri[fitting_radii],self.Ar_finalD[fitting_radii]*np.sqrt(self.gb[fitting_radii]),self.halo_scale_radius,ri,self.gb)
+        self.vesc_fit = self.NFWfit(ri[fitting_radii],self.Ar_finalD[fitting_radii]*np.sqrt(self.gb[fitting_radii]),self.halo_scale_radius,ri,self.gb)
+        self.vesc_fit_e = self.NFWfit(ri[fitting_radii],self.Ar_finalE[fitting_radii]*np.sqrt(self.gb[fitting_radii]),self.halo_scale_radius,ri,self.gb)
         #self.NFWfit(ri[fitting_radii],self.Ar_finalD[fitting_radii],self.halo_scale_radius,ri,self.gb)
 
         if plotphase == True:
@@ -994,7 +999,7 @@ class CausticSurface:
             self.halo_scale_density_e = np.sqrt(out[1][0][0])
         except:
             self.halo_scale_density_e = 1e14
-        self.vesc_fit = np.sqrt(2*4*np.pi*4.5e-48*self.halo_scale_density*(halo_srad)**2*np.log(1+ri_full/halo_srad)/(ri_full/halo_srad))*3.08e19/np.sqrt(g_b)
+        return np.sqrt(2*4*np.pi*4.5e-48*self.halo_scale_density*(halo_srad)**2*np.log(1+ri_full/halo_srad)/(ri_full/halo_srad))*3.08e19/np.sqrt(g_b)
 
     def findcontours(self,Zi,levels,ri,vi,r200,vvar,Hz=100.0,q=10):
         '''This function will use skimage find_contours() to locate escape surfaces'''
