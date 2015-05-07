@@ -251,6 +251,7 @@ class Caustic:
             self.Mass = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=None,H0=H0)
             self.Mass2 = MassCalc(self.x_range,self.caustic_profile,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=fbr,H0=H0)
             self.MassE = MassCalc(self.x_range,self.caustic_edge,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=fbr,H0=H0)
+            self.MassF = MassCalc(self.x_range,self.caustic_fit,self.gal_vdisp,self.clus_z,r200=self.r200,fbr=fbr,H0=H0)
 
             self.mprof = self.Mass.massprofile
             self.mprof_fbeta = self.Mass2.massprofile
@@ -264,6 +265,8 @@ class Caustic:
             self.M200_fbeta = self.Mass2.M200
             self.M200_edge = self.MassE.M200
             self.M200_edge_est = self.MassE.M200_est
+            self.M200_fit = self.MassF.M200
+            self.M200_fit_est = self.MassF.M200_est
             self.M500_est = self.Mass.M500_est
             self.M500_est_fbeta = self.Mass2.M500_est
 
@@ -943,15 +946,17 @@ class CausticSurface:
         """
         It is necessary to restrict the gradient the caustic can change at in order to be physical
         """
+        gradu = 0.5
+        gradd = 2.0
         if pastA <= newA:
-            if (np.log(newA)-np.log(pastA))/(np.log(newr)-np.log(pastr)) > 3.0 and pastA != 0:
+            if (np.log(newA)-np.log(pastA))/(np.log(newr)-np.log(pastr)) > gradu and pastA != 0:
                 dr = np.log(newr)-np.log(pastr)
-                return np.exp(np.log(pastA) + 2*dr)
+                return np.exp(np.log(pastA) + gradu*dr)
             else: return newA
         if pastA > newA:
-            if (np.log(newA)-np.log(pastA))/(np.log(newr)-np.log(pastr)) < -3.0 and pastA != 0:
+            if (np.log(newA)-np.log(pastA))/(np.log(newr)-np.log(pastr)) < -gradd and pastA != 0:
                 dr = np.log(newr)-np.log(pastr)
-                return np.exp(np.log(pastA) - 2*dr)
+                return np.exp(np.log(pastA) - gradd*dr)
             else: return newA
 
     def identifyslot(self,dvals,level):
