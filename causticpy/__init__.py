@@ -607,7 +607,9 @@ class CausticSurface:
         #fit an NFW to the resulting caustic profile.
         self.vesc_fit = self.NFWfit(ri[fitting_radii],self.Ar_finalD[fitting_radii]*np.sqrt(self.gb[fitting_radii]),self.halo_scale_radius,ri,self.gb)
         self.vesc_fit_e = self.NFWfit(ri[fitting_radii],self.Ar_finalE[fitting_radii]*np.sqrt(self.gb[fitting_radii]),self.halo_scale_radius,ri,self.gb)
-        #self.NFWfit(ri[fitting_radii],self.Ar_finalD[fitting_radii],self.halo_scale_radius,ri,self.gb)
+        #set first element (which is NaN) equal to the second value
+        self.vesc_fit[0] = self.vesc_fit[1]
+        self.vesc_fit_e[0] = self.vesc_fit_e[1]
 
         if plotphase == True:
             s,ax = subplots(1,figsize=(10,7))
