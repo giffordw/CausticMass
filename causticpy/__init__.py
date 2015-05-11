@@ -443,7 +443,7 @@ class Caustic:
         self.x_scale = (xvalues/xmax)*xres
         self.y_scale = ((yvalues*(normalization*scale)+ymax)/(ymax*2.0))*self.y_range.size
         #self.ksize_x = (4.0/(3.0*xvalues.size))**(1/5.0)*np.std(self.x_scale[xvalues<r200])
-        self.ksize_x =  (4.0/(3.0*xvalues.size))**(1/5.0)*np.sqrt((np.var(self.x_scale[xvalues<r200]) + np.var(self.y_scale[xvalues<r200]))/2.0)
+        self.ksize_x =  (4.0/(3.0*xvalues.size))**(1/5.0)*np.sqrt((astStats.biweightScale((self.x_scale[xvalues<r200]).copy(),9.0)**2 + astStats.biweightScale((self.y_scale[xvalues<r200]).copy(),9.0)**2)/2.0)
         self.ksize_x *= 1.0
         self.ksize_y = self.ksize_x#(4.0/(3.0*xvalues.size))**(1/5.0)*np.std(self.y_scale[xvalues<r200])
         self.imgr,xedge,yedge = np.histogram2d(xvalues,yvalues,bins=[self.x_range_bin,self.y_range_bin/(normalization*scale)])
@@ -1016,7 +1016,7 @@ class CausticSurface:
                 ycont = (contour[:, 1]-vi.size/2.0 - 1)*Hz*q*rspace
                 
                 #only consider contours that are "full" and don't loop back only in positive or negative space
-                if np.max(xcont) >= 1.0 and np.min(xcont) <=0.05 and np.max(ycont) > 0 and np.min(ycont) < 0:
+                if np.max(xcont) >= 0.4 and np.min(xcont) <=0.05 and np.max(ycont) > 0 and np.min(ycont) < 0:
                     xcont_u, ycont_u = xcont[ycont > 0],ycont[ycont > 0] #find positive/negative contours
                     xcont_d, ycont_d = xcont[ycont < 0],ycont[ycont < 0]
                     y_u = np.zeros(ri.size) #initialize positive, negative, and final arrays
