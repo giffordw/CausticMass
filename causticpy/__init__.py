@@ -260,6 +260,7 @@ class Caustic:
             self.mprof_edge = self.MassE.massprofile
             self.r200_est = self.Mass.r200_est
             self.r200_est_fbeta = self.Mass2.r200_est
+            self.r200_est_edge = self.MassE.r200_est
             self.r500_est = self.Mass.r500_est
             self.r500_est_fbeta = self.Mass2.r500_est
             self.M200_est = self.Mass.M200_est
