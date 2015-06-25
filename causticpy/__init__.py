@@ -657,6 +657,20 @@ class CausticSurface:
                 outer_el = i + 5
                 inner_r = ri[inner_el]
                 outer_r = ri[outer_el]
+
+                dens = np.average(Zi[inner_el:outer_el],axis=0)
+                roots = np.sort(np.abs(vi[dens>0.05]))
+                databinned = data_e[np.where((data_e[:,0]>=inner_r)&(data_e[:,0]<outer_r))]
+                if roots[0] < 500.0:
+                    root = 3500.0
+                if roots[0] > 3500.0:
+                    root = 3500.0
+                r_inside.extend(databinned[:,0][np.where(np.abs(databinned[:,1])<root)])
+                v_inside.extend(databinned[:,1][np.where(np.abs(databinned[:,1])<root)])
+                i += 5
+            data_e = np.vstack((np.array(r_inside),np.array(v_inside))).T
+            return data_e
+    '''
                 deriv = (np.average(Zi[inner_el:outer_el],axis=0)[1:]-np.average(Zi[inner_el:outer_el],axis=0)[:-1]) \
                             /(vi[1:]-vi[:-1])
                 roots = np.sort(np.abs(vi[((np.average(Zi[inner_el:outer_el],axis=0)[1:]- \
@@ -679,6 +693,7 @@ class CausticSurface:
                 i += 5
             data_e = np.vstack((np.array(r_inside),np.array(v_inside))).T
             return data_e
+    '''
 
     def findsurface_inf(self,data,ri,vi,Zi,Zi_inf,memberflags=None,r200=2.0,maxv=5000.0,halo_scale_radius=None,halo_scale_radius_e=0.01,halo_vdisp=None,beta=None):
         """
