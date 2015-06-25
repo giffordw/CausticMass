@@ -231,7 +231,7 @@ class Caustic:
         print 'Calculating initial surface'
         if inflection == False:
             if gal_memberflag is None:
-                self.S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None,mirror=mirror,edge_perc=edge_perc,Hz=self.Hz,edge_int_remove=edge_int_remove,q=q)
+                self.S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,r200=self.r200,halo_vdisp=self.pre_vdisp_comb,beta=None,mirror=mirror,edge_perc=edge_perc,Hz=self.Hz,edge_int_remove=edge_int_remove,q=q,plotphase=False)
             else:
                 self.S.findsurface(self.data_set,self.x_range,self.y_range,self.img_tot,memberflags=self.data_set[:,-1],r200=self.r200,mirror=mirror,edge_perc=edge_perc,Hz=self.Hz,q=q)
         else:
@@ -619,8 +619,9 @@ class CausticSurface:
             for t,con in enumerate(self.contours):
                 ax.plot(ri,con,c='0.4',alpha=0.5)
                 ax.plot(ri,-con,c='0.4',alpha=0.5)
-            ax.plot(ri,self.Ar_finalD,c='blue')
-            ax.plot(ri,-self.Ar_finalD,c='blue')
+            ax.plot(ri,self.Ar_finalD,c='red')
+            ax.plot(ri,-self.Ar_finalD,c='red')
+            ax.plot(ri,self.Ar_finalE,c='blue')
             #ax.plot(mid_rbin,avgmax,c='r')
             ax.set_ylim(0,5000)
             ax.set_xlim(0,4)
