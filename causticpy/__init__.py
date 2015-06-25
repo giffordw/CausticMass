@@ -570,6 +570,7 @@ class CausticSurface:
             vsort = np.abs(data_e[:,1][np.argsort(data_e[:,0])]) #sort absolute value of velocities by r position
         else:
             vsort = data_e[:,1][np.argsort(data_e[:,0])] #same as above but not abs
+        self.data_e = data_e
         mid_rbin = np.array([])
         avgmax = np.array([])
         avgmin = np.array([])
@@ -661,10 +662,12 @@ class CausticSurface:
                 dens = np.average(Zi[inner_el:outer_el],axis=0)
                 roots = np.sort(np.abs(vi[dens>0.05]))
                 databinned = data_e[np.where((data_e[:,0]>=inner_r)&(data_e[:,0]<outer_r))]
-                if roots[0] < 500.0:
+                if np.abs(roots[-1]) < 500.0:
                     root = 3500.0
-                if roots[0] > 3500.0:
+                elif np.abs(roots[-1]) > 3500.0:
                     root = 3500.0
+                else:
+                    root = np.abs(roots[-1])
                 r_inside.extend(databinned[:,0][np.where(np.abs(databinned[:,1])<root)])
                 v_inside.extend(databinned[:,1][np.where(np.abs(databinned[:,1])<root)])
                 i += 5
